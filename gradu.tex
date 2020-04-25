@@ -1,0 +1,1029 @@
+\documentclass[finnish,twoside,censored,csm,sw-track-2018]{HYthesisML}
+%\documentclass[draft,finnish,twoside,censored,csm,sw-track-2018]{HYthesisML}
+\PassOptionsToClass{openright,twoside,a4paper}{report}
+\usepackage{csquotes}
+%\usepackage[style=authoryear,bibstyle=authoryear,backend=biber,natbib=true,maxnames=99,maxcitenames=2,giveninits=true,uniquename=init]{biblatex}
+\usepackage[style=numeric,bibstyle=numeric,backend=biber,natbib=true,maxbibnames=99,giveninits=true,uniquename=init]{biblatex}
+\addbibresource{bibliography.bib}
+\DeclareNameAlias{sortname}{family-given}
+\usepackage{lmodern}         % Font package, again in some systems.
+\usepackage{textcomp}        % Package for special symbols
+\usepackage[pdftex]{color, graphicx} % For pdf output and jpg/png graphics
+\usepackage{epsfig}
+\usepackage{subfigure}
+\usepackage[pdftex, plainpages=false]{hyperref} % For hyperlinks and pdf metadata
+\usepackage{fancyhdr}        % For nicer page headers
+\usepackage{tikz}            % For making vector graphics (hard to learn but powerful)
+\usepackage{amsmath, amssymb} % For better math
+\singlespacing               %line spacing options; normally use single
+\fussy
+
+% Omat
+\usepackage{xcolor}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{fancyvrb}
+\usepackage{wrapfig}
+\usepackage{caption}
+% /Omat
+
+\title{SPA-sovellukset hajautettuna järjestelmänä}
+
+\author{Juha-Pekka Eloranta}
+\date{\today}
+\supervisors{Dr.~M.~Luukkainen, Prof.~T.~Mikkonen}
+\examiners{Prof.~T.~Mikkonen}
+\keywords{SPA-sovellus, hajautetut järjestelmät}
+\additionalinformation{\translate{\track}}
+
+\classification{\protect{\ \\
+\  Information systems $\rightarrow$ Parallel and distributed DBMSs
+\  Information systems  $\rightarrow$ Web applications
+\  Information systems  $\rightarrow$ Browsers
+}}
+
+%% OPTIONAL STEP: Set up properties and metadata for the pdf file that pdfLaTeX makes.
+%% Your name, work title, and keywords are recommended.
+\hypersetup{
+    pdftitle={Master's thesis},            % title
+    pdfauthor={Juha-Pekka Eloranta},           % author
+    pdfsubject={},          % subject of the document
+}
+
+%%-----------------------------------------------------------------------------------
+
+\begin{document}
+
+% Generate title page.
+\maketitle
+
+\begin{abstract}
+
+Single-page application -mallista on tullut suosittu tapa tehdä web-sovelluksia. Sen ansiosta web-sivujen käyttökokemuksesta saadaan enemmän työpöytäsovellusten kaltainen, kun jokaista sivuvaihtoa ja muuta operaatiota varten ei tarvitse ladata palvelimelta uutta HTML-sivua.
+
+SPA-malli tuo kuitenkin tavallisiin web-sovelluksiin mukaan hajautetun datan käsittelyn ongelmia. Eheyden hallinta hajautetuissa järjestelmissä on ikuisuusaihe tietojenkäsittelytieteen tutkimuksessa. SPA-sovelluksissa tähän ei kuitenkaan kiinnitetä juuri huomioita. Tässä tutkielmassa vertaillaan SPA-sovelluksia hajauttuihin tietokantoihin ja pyritään löytämään niistä tekniikoita, joita voisi soveltaa myös SPA-sovelluksiin.
+
+Vertailu aloitetaan esittelemällä erilaisia hajautettuja tietokantoja ja arvioidaan mitkä vastaa eniten SPA-mallin tilannetta. Tämän jälkeen vertailu keskittyy kahteen osa-alueeseen. Ensin esitellään hajautettujen tietokantojen käyttämiä tapoja replikoida dataa pisteestä toiseen ja vertaillaan niihin web-sovelluksien tapoihin siirtää dataa selaimen ja palvelimen välillä. Lisäksi tutkitaan kuinka eheyteen liittyvät mallit, kuten ACID-ominaisuudet sekä eristyvyystasot ja -anomaliat thttps://www.overleaf.com/project/5e05d3cffd699700016aa8d3oteutuvat tai ilmenevät SPA-sovelluksissa.
+
+Vertailun tuloksena löydettiin muutamia mielenkiintoisia seikkoja sekä replikointimenetelmien että eheyden hallinan osalta, joissa SPA-sovelluksissa voisi olla järkevää ottaa mallia hajauttujen tietokantojen ratkaisuista. Tulosten hyödyllisyyden arviointi jää todellisissa ohjelmistoprojekteissa tehtäväksi. Löydösten perusteella on kuitenkin hyvät edellytykset lähteä kehittämään uusia kirjastoja, joilla havaittuja SPA-sovellusten ongelmia voitaisiin ratkaista.
+
+\end{abstract}
+
+\begin{otherlanguage}{english}
+\begin{abstract}
+
+Single-page application -model has become a popular way of building web-applications. It makes the user experience of a website more similar to desktop-applications. This is achieved by not having to make a request to backend for each page navigation and operation.
+
+However the SPA-model brings some challenges of distributed data management to basic web-applications. Managing distributed consistency is a perennial research topic in computer science. Yet this a received little attention in single-page application context. This thesis compares single-page applications to distributed databases and aims to identify techniques from them that could be used in single-page applications.
+
+The comparison begins by looking at different distributed databases and analysing which of them matches closest to the single-page application model. Then the comparison focuses on two topics. Techniques used by distributed databases for replicating data from site to another are presented and compared to techniques used in web application to communicate between the server and the browser. Next topic of the thesis is to study how consistency related models like ACID-properties along with isolation levels and anomalies are realized or manifested in single-page applications.
+
+As a result of the study some interesting aspects were found regarding how single-page applications could make use of techniques used for replication and consistency management in distributed databases. Evaluating the usefulness of these results remains to be done in real software projects. However the findings give a good starting point for developing libraries that could solve some of the problems that were found.
+
+\end{abstract}
+\end{otherlanguage}
+
+% Place ToC
+\newpage
+\setcounter{tocdepth}{1}
+\mytableofcontents
+\frontmatter
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\chapter{Johdanto}
+
+Single-page application -mallista on tullut erityisesti React.js JavaScript-kirjaston suosion myötä yleinen tapa totettaa verkkosivuja ja -sovelluksia. Perinteisten palvelimella luotujen HTML-näkymien sijaan SPA-mallissa näkymiä luodaan käyttäjän selaimessa JavaScript-kirjastojen avulla. Näkymien muodostamista varten palvelimelta ladataan selaimen muistiin dataa, jota sovellus näyttää käyttäjälle. Tätä samaa dataa säilytetään myös järjestelmän varsinaisessa tietokannassa palvelimella. Web-sovelluksen voidaan näin nähdä käyttävän hajautettua tietokantaa. Tällöin datan eheyden hallinnasta muodostuu haastava ongelma. 
+
+Tietokantoja ja hajautettuja järjestelmiä on tutkittu vuosikymmeniä ja eheyden hallintaan on kehitettu lukuisia menetelmiä ja malleja. SPA-sovellukset ovat sen sijaan tuoreempi ilmiö eikä niiden taustalla ole samanlaista vuosikymmenten akateemista tutkimusta. Tässä tutkielmassa vertaillaan SPA-sovelluksissa käytettyjä menetelmiä ja tekniikoita hajauttujen järjestelmien ja erityisesti hajautettujen tietokantojen käyttämiin datan replikoinnin ja datan eheyden hallinnan menetelmiin. Vertailun avulla pyritään vastaamaan seuraaviin tutkimuskysymyksiin:
+
+- TK1: Millaisia hajauttuja järjestelmiä ja tietokantojen piirteitä SPA-sovelluksilla on?
+
+- TK2: Käytetäänkö SPA-sovelluksissa samankaltaisia datan replikointiin ja eheyden hallintaan liittyviä menetelmiä kuin replikoiduissa tietokannoissa?
+
+- TK3: Mistä hajautettujen järjestelmien käyttämistä menetelmistä voisi ottaa mallia SPA-sovelluksiin?
+
+Tutkielman rakenne on seuraavanlainen. Luvussa 2 käydään läpi SPA-malliin johtanutta web-teknologioiden kehitystä. Luvussa 3 esitellään mitä ovat SPA-sovellukset, käydään läpi niiden motivaattoreita ja toimintaperiaatetta. Luvussa 4 käsitellään hajautettujen tietokantojen määritelmiä ja syitä tietokantojen hajauttamiselle ja tutkitaan onko SPA-sovelluksilla samoja motivaattoreita. Näin tutkielman vertailu rajataan replikoituihin tietokantohin, joiden perehdytään tarkemmnin luvussa 5. Luvussa 6 esitellään hajauttujen tietokantojen käyttämiä replikointiprotokollia eli tapoja datan synkronointiin tietokantapisteiden välillä. Näitä tapoja vertaillaan web-selaimen ja palvelimen välillä tapahtuvaan kommunikaatioon käyttäviin tekniikoihin. Luvussa 7 käsitellään keskeistä hajauttuun dataan liittyvää haastetta eli eheyden hallintaa. Siihen liittyviä seikkoja peilataan SPA-sovellusten kontekstiin ja tutkitaan mitkä eheyden hallinnan osa-alueista olennaisia juuri SPA-sovelluksille. Lopuksi luvussa 8 käydään läpi tutkielman tuloksia ja pohditaan mahdollisia seuraavia tutkimusaiheita.
+
+\chapter{Web-tekniikoiden historiaa}
+\label{web-history}
+
+Web-sovellusten kehittymisen ymmärtämiseksi on hyödyllistä tarkastella hieman historiaa. Tänä päivänä SPA-sovellukset ovat jopa niin suosittuja, että ne vaikuttavat oletusarvoiselle tavalle toteuttaa web-sovelluksia. On kuitenkin hyvä ymmärtää minkä ongelman ratkaisemiseksi SPA-malli on kehitetty. Historiaa on hyvä tarkastella myös selainten mahdollistamien ratkaisujen nykytilan hahmottamiseksi. Esimerkiksi tiedon tallentaminen paikallisesti ei ole aina ollut mahdollista selaimessa.
+
+Termin single-page application alkuperä ei ole selkeä. Esimerkiksi kirja \textit{Single  Page  Web  Applications} \citep{Mikowski} ei nimestään huolimatta mainitse termin alkuperää lainkaan. Wikipedia-artikkeli \textit{Single-page application} on luotu vuonna 2008 ja siitä mainitaan, että termin olisi keksinyt Steve Yen vuonna 2005 \citep{wikiSPA-2008}. Lähdeviittausta tälle ei kuitenkaan ole ja alkuperäistä blogikirjoitusta tai muuta sellaista ei ole helposti löydettävissä enää 15 vuotta myöhemmin.
+
+SPA-sovelluksille on olennaista mahdollisuus tehdä selaimesta asynkronisia pyyntöjä palvelimelle. Näistä pyynnöistä käytetään nimitystä Ajax, joka on lyhenne sanoista ``Asynchronous JavaScript and XML''. Termin lanseerasi Jesse James Garrett vuonna 2005 kirjoituksessaan \textit{Ajax: A New Approach to Web Applications} \citep{Ajax}. Siinä hän kuvailee uuden tavan tehdä web-sovelluksia JavaScriptia ja asynkronisia XMLHttpRequest-pyyntöjä käyttäen. Niiden avulla on mahdollista tehdä verkkosivuja, joissa sivua ei tarvitse ladata uudelleen jatkuvasti. Käyttökokemuksesta on näin mahdollista tehdä enemmän työpöytäsovellusten kaltainen. Vuonna 2006 julkaistu jQuery \cite{JSdefguide} helpotti Ajax-kyselyjen tekemistä ja selaimen esittämän HTML-näkymän dynaamista päivittämistä. JQeury-kirjasto muodostui seuraavia vuosina todella suosituksi ja sen avulla tehdyt web-sovellukset voidaan nähdä yhtenä ensiaskeleena staattisista HTML-sivuista kohti natiivisovelluksien kaltaisia SPA-sovelluksia.
+
+Yksi mielenkiintoinen piirre Ajax-artikkelissa on se, että siinä käytetyt teknologiat olivat olleet selaimissa saatavilla jo useita vuosia. Malli olikin ollut jo käytössä esimerkiksi useissa Googlen palveluissa jo ennen artikkelin julkaisemista \citep{Ajax}. Uuden teknologian tai tekniikan esittelemisen sijaan kyseessä on pikemminkin menetelmän nimeäminen ja edistäminen, näyttäen samalla uutta suuntaan laajemmalle kehittäjäyhteisölle.
+
+Single-page application -malli on siis saanut alkunsa jossain vuoden 2005 tienoilla. Sen nouseminen suurempaan suosioon tapahtui kuitenkin vasta myöhemmin. Google Trends -palvelu mahdollistaa Googlen hakupalvelussa käytettyjen hakutermien suosion tutkimisen. Kuvassa \ref{fig-spa-trends} on esitetty historiatietoa termin ``Single-page application'' suosiosta. Siitä nähdään, että termin suosio on lähtenyt kasvuun vuosien 2010-2011 tienoilla. Suosion kasvua voi selittää vuonna 2010 Googlen julkaisema \citep{angularJS-release} AngularJS-ohjelmistokehys, joka toimi single-page application mallilla. Kuvassa \ref{fig-react-vs-jquery} näkyy kuinka jQuery-kirjaston suosio Google hauissa kääntyi laskuun pari vuotta AngularJS:n julkaisun jälkeen.
+
+Vuonna 2013 ilmestyi tämän hetken suosituin SPA-mallia käyttävä kirjasto: React.js. Vuoden 2016 se oli Stack Overflow Developer Surveyn \citep{SO-survey-2016} ``trending''-listan selvä voittaja. Sen suosio oli kasvanut edellisen vuoden kyselyyn verrattuna yli 300 prosenttia. Vuonna 2017 sen suosio ohittaa jQueryn kuvassa \ref{fig-react-vs-jquery} ja vuonna 2019 sitä ladattiin huimat 275 miljoonaa kertaa npm-palvelusta. Kuvasta \ref{fig-react-npm} nähdään kuinka React-kirjaston suosion kasvu on ollut huimaa. Kirjastoa on ladattu yhteensä yli 500 miljoonaa kertaa ja siitä yli puolet vuoden 2019 aikana.
+
+\begin{figure}
+\centering
+\begin{minipage}{0.5\textwidth}
+    \centering
+    \includegraphics[width=1\linewidth]{img/trends_spa_google.png}
+    \captionof{figure}{Termin single-page application}
+    \footnotesize suosio Google-hauissa
+    \label{fig-spa-trends}
+\end{minipage}%
+\begin{minipage}{0.5\textwidth}
+  \centering
+  \includegraphics[width=1\linewidth]{img/trends_react_npm.png}
+  \captionof{figure}{React.js kirjaston}
+  \footnotesize latausmäärät npm-palvelusta
+  \label{fig-react-npm}
+\end{minipage}
+\end{figure}
+
+\begin{figure}[ht]
+  \centering
+    \includegraphics[width=0.9\textwidth]{img/trends_react_jquery_3.png}
+  \caption{Kirjastojen jQuery ja React suosio Google hauissa}
+  \label{fig-react-vs-jquery}
+\end{figure}
+
+\clearpage
+
+SPA-mallin kehitys on mielenkiintoinen esimerkki web-tekniikoiden kehittymisestä. Mallin mahdollistavat teknologiat (XHR-pyynnöt) ovat olleet selaimissa saatavilla jopa vuodesta 2000. Vuonna 2005 malli konkretisoitui siitä julkaistun artikkelin (Ajax) myötä. Muutamia vuosia myöhemmin mallia käyttäviä kirjastoja alkoi ilmestyä ja tekniikan suosio kasvoi. Tämän esimerkin perusteella näyttäisi siis, että uusien tekniikoiden kehittymisessä voi kestää yllättävän pitkään.
+
+Web-sivustojen kehittyessä on syntynyt tarve tallentaa dataa myös paikallisesti. HTTP-pyyntöjen mukana lähetettävät keksit (engl. cookie) mahdollistivat tämän, mutta parempia menetelmiä ryhdyttiin kehittelemään. Vuonna 2009 julkaistussa W3C luonnoksessa \citep{W3C-2009-webstorage} esiteltiin suunnitelmat localStorage:sta, sessionStorage:sta sekä selaimessa toimivasta SQL-tietokannasta. Myöhemmin samana vuonna SQL-tietokannan osuus erotettiin omaan luonnokseensa \citep{W3C-2009-webdatabase}. Seuraavana vuonna W3C konsorttio hylkäsi \citep{W3C-2010-sqldatabase} ajatuksen SQL-tietokannasta ja sen tilalle syntyi luonnos \citep{W3C-2010-indexeddb} uudesta selaimassa toimivasta tietokannasta nimeltä Indexed Database. Vuonna 2013 localstoragen sisältävä Web Storage saavutti W3C Recommendation tason. Tällä tasolla olevat spesifikaatiot mielletään standardeiksi, joita selainten oletetaan tukevan. Indexed Database saavutti tämän tason kaksi vuotta myöhemmin vuonna 2015.
+
+Mahdollisuus datan paikalliseen tallentamiseen on olennainen tekijä Progressive Web App eli PWA-mallille. Sen esitteli Alex Russell kirjoituksessaan ``Progressive Web Apps: Escaping Tabs Without Losing Our Soul'' vuonna 2015 \citep{pwa-coined}. Russell listaa joukon ominaisuuksia tai vaatimuksia, joiden avulla web-sovelluksesta tehdään enemmän natiivisovellusten kaltaisia. Useimmat ominaisuuksista eivät ole relevantteja tämän tutkielman kannalta, mutta vaatimus offline-käytettävyydestä on mielenkiintoinen, sillä se edellyttää datan tallentamista esimerkiksi Indexed Databasen avulla.
+
+Vuonna 2019 esitelty \citep{local-first} \textit{local-first software} -malli vie datan tallentamisen selaimessa vielä pidemmälle. Siinä datan pääasiallinen tallennuspaikka on selain ja palvelimen tehtäväksi jää vain datan synkronointi eri käyttäjien ja laitteiden välillä. Verkkoyhteys palvelimelle ei ole pakollinen vaan local-first -mallilla tehdyt sovellukset suunnitellaan niin, että kaikki operaatiot voidaan tehdä paikallisesti ja synkronoida myöhemmin palvelimelle.
+
+Seuraavassa taulukossa kerätty aikajanalle tapahtumia, jotka auttavat ymmärtämään SPA-mallin ja selainten tallennusmekanismien nykytilaa.
+
+\clearpage
+
+\begin{center}
+\begin{tabular}{ | m{2cm} | m{12cm} | } 
+ \hline
+ \textbf{Vuosi} & \textbf{Tapahtuma} \\ 
+ \hline
+ 2000 & \textbf{XMLHttpRequest} Asynkronisen kommunikaation selaimen ja palvelimen välillä mahdollistava XHR käytettävissä useissa selaimissa. \citep{pwa-coined}\\ 
+ \hline
+ 2005 & \textbf{Ajax} James Garrett konseptualisoi Ajax-käsitteen \citep{Ajax}\\ 
+ \hline
+ 2006 & \textbf{jQuery}-kirjasto julkaistiin \citep{JSdefguide}\\
+ \hline
+ 2008 & \textbf{Wikipedia: Single-page application} artikkelin ensimmäinen versio \citep{wikiSPA-2008} \\
+ \hline
+ 2009 & \textbf{Web Storage} luonnos \citep{W3C-2009-webstorage}, jossa esiteltiin localStorage, sessionStorage ja WebSQL.\\
+ \hline
+ 2010 & \textbf{WebSQL ja IndexedDB} WebSQL deprikoitiin \citep{W3C-2010-sqldatabase} ja tilalle \citep{W3C-2010-indexeddb} Indexed Database.\\
+ \hline
+  2010 & \textbf{AngularJS} Google julkaisi vuonna 2010 AngularJS-ohjelmistokehyksen, joka toimi single-page application mallilla. \citep{angularJS-release} \\
+ \hline
+ 2013 & \textbf{WebStorage standardi} Web Storage (localstorage) W3C Recommendation \citep{W3C-2013-webstorage}. \\
+ \hline
+ 2013 & \textbf{React.js} -kirjaston julkaisu. \\
+ \hline
+ 2015 & \textbf{IndexedDB W3C Recommendation} Vuonna 2015 Indexed Database saavutti W3C Recommendation tason \citep{W3C-2015-indexeddb}. \\
+ \hline
+ 2015 & \textbf{Progressive Web App} Termin "Progressive Web App" lanseerasi Alex Russell kirjoituksessaan "Progressive Web Apps: Escaping Tabs Without Losing Our Soul" \citep{pwa-coined}. \\
+ \hline
+ 2016 & \textbf{React suosio} Vuoden 2016 Stack Overflow Developer Survey -kyselyssä \citep{SO-survey-2016} React-kirjaston suosio oli kasvanut huimat 311\% edellisvuoteen verrattuna. \\
+ \hline
+\end{tabular}
+\end{center}
+
+\chapter{SPA-sovellukset}
+\label{chapter-spa}
+
+SPA-sovelluksiin on viitattu jo edellä useita kertoja, mutta on syytä esittää niille vielä tarkempi määritelmä. Single-page application -mallilla toteutetut verkkosivustot eli SPA-sovellukset ovat web-selaimella käytettäviä sovelluksia. Tavallisista verkkosivuista poiketen SPA-sovellusta varten ladataan vain yksi html-sivu. Tämän html-sivun lisäksi selaimeen ladataan palvelimelta sovelluksen tarvitsemat JavaScript- ja CSS-tiedostot sekä muita resursseja. Käyttäjän siirtyessä sovelluksessa toiselle sivulle ei tarvitakaan uuden html-sivun lataamista palvelimelta vaan uusi näkymä renderöidään selaimessa \citep{ReactGlossary}. Kummankin mallin mukaista selaimen ja palvelin välillä tapahtuvaa kommunikaatiota on esitetty kuvassa \ref{fig-basic-vs-spa}.
+
+\begin{figure}[ht]
+  \centering
+    \includegraphics[width=1\textwidth]{img/basic_vs_spa.png}
+  \caption{Perinteinen web-sovellus ja SPA-sovellus}
+  \label{fig-basic-vs-spa}
+\end{figure}
+
+Yksinkertaisen SPA-mallia käyttävä sovelluksen voidaan nähdä koostuvan kolmesta osasta. Kyseessä on kolmikerrosarkkitehtuuri ja sen osat on esitetty kuvassa \ref{fig-spa-rakenne}. Käyttäjän laitteella on web-selaimessa toimiva JavaScript-sovellus, joka vastaa HTML-muodossa esitettävästä käyttöliittymästä. Se kommunikoi REST-rajapinnan kautta sovelluspalvelimen kanssa, joka taas kommunikoi tietokantajärjestelmän kanssa.
+
+\begin{figure}[ht]
+  \centering
+    \includegraphics[width=0.9\textwidth]{img/basic_spa.png}
+  \caption{SPA-sovelluksen rakenne}
+  \label{fig-spa-rakenne}
+\end{figure}
+
+SPA-sovellukset pyrkivät tekemään web-selaimessa toimivien sovelluksen käyttökokemuk-sesta yhtä sujuvaa ja responsiivista kuin työpöytäsovelluksissa \citep{spa-jadhav}. Perinteiset verkkosivut koostuvat useista erillisistä html-sivuista, joiden välillä käyttäjä navigoi. Jokainen sivu ladataan erikseen palvelimelta ja tämä voi tehdä tällä mallilla toteutettujen sovellusten käyttämisestä tahmeaa. Jos sivuvaihdossa tai muussa interaktiossa oleva viive on alle 0.1 sekuntia, käyttäjä kokee järjestelmän reagoivan välittömästi. Tätä pidempikin vasteaika interaktioissa on hyväksyttävissä, mutta yli sekunnin viive koetaan häiritseväksi \citep{Nielsen}. Perinteisissä verkkosovelluksissa sivulataukset asettuvat usein juuri 0.1 ja 1 sekunnin välille. Mikäli siis halutaan välittömästi reagoiva käyttökokemus tai huonoillakin yhteyksillä tyydyttävästi toimiva sivusto on pyrittävä välttämään jatkuvia synkronisia pyyntöjä palvelimelle. Single-page application -malli mahdollistaa tämän työpöytäsovellusten kaltaisen kokemuksen web-selaimessa sillä jokaista sivuvaihtoa varten ei jouduta tekemään pyyntöä palvelimelle.
+
+%\section{React.js -käyttöliittymäkirjasto}
+%\label{sec-React.js}
+
+React on vuonna 2013 julkaistu \citep{react-release} JavaScript-kirjasto käyttöliittymien rakentamiseen. Se poikkeaa tavanomaisista html-templaatteja käyttävistä menetelmistä jakamalla käyttöliit-tymän osat komponentteihin \citep{react-why}. Käyttöliittymänäkymän päivittäminen on tehty React:ssa hyvin helpoksi. HTML-elementtien imperatiivisten muokkausoperaatioiden kirjoittamisen sijaan sovelluskehittäjä päivittää käyttöliittymäkomponenttien käyttämää dataa eli tilaa ja React päivittää elementit automaattisesti. Tätä havainnollisteen kuvassa \ref{fig-react-tila-ja-komponentti} esimerkin avulla. Vasemmalla on esitetty JSON-objekti, joka kuvaa komponentin tilaa. Oikealla on piirros HTML-elementistä, jonka React-komponentti tuottaa. React-komponentit ovat siis kuin funktioita, jotka ottavat syötteenä tilaa kuvaavan objektin ja tuottavat HTML-elementtejä.
+
+\begin{figure}[ht]
+\begin{minipage}{.5\textwidth}
+  \begin{Verbatim}[fontsize=\scriptsize]
+{
+  id: 'r-105',
+  name: 'Huone 105',
+  img: ''
+  info: [
+    { title: 'Henkilömäärä', 
+      value: 6 },
+    { title: 'Varusteet', 
+      value: 'TV, neuvottelupöytä' }
+  ],
+  comments: [
+    {
+      id: '105-c-1',
+      time: '2020-01-14 11.34.00',
+      author: 'Alice',
+      text: 'Yksi kattolampuista on palanut'
+    }
+  ]
+}
+\end{Verbatim}
+\end{minipage}%
+\begin{minipage}{.5\textwidth}
+  \begin{center}
+    \includegraphics[width=1.0\textwidth]{img/huone_105_kommentointi.png}
+  \end{center}
+\end{minipage}%
+\caption{Tilaobjekti ja käyttöliittymäkomponentti}
+\label{fig-react-tila-ja-komponentti}
+\end{figure}
+
+HTML-elementtien käsittelyn sijaan sovelluskehittäjä keskittyykin React-sovellusta rakentaessaan sovelluksen tilaan tehtäviin muutoksiin. React-sovelluksissa sovelluksen tilaa voidaan hallita useilla tavoilla ja paikoissa. Komponenteilla voi olla oma sisäinen tilansa tai sovelluksen juurikomponentti voi sisältää useiden komponenttien tarvitsemaa dataa. Tila voidaan säilyttää myös käyttöliittymäkomponteista erillään. Näin toimii Redux-kirjasto. Siinä kaikki sovelluksen käyttämä tila voidaan keskittää yhteen paikkaan ja käyttöliittymäkomponentit tarkkailevat tarvitsemaansa osaa tilaobjektista. 
+%Seuraava luku esittelee Redux-kirjastoa käyttävän React-sovelluksen toimintaperiaatteisiin.
+
+%\section{React+Redux -sovelluksen toimintaperiaate}
+%\label{spa-toimintaperiaate}
+
+Tässä tutkielmassa keskitytään tilanhallintamalliin, jossa sovelluksen tilaa hallitaan Redux-kirjaston \citep{redux} avulla. Lisäksi oletetaan, että sovellukseen kuuluu sovelluspalvelin, joka tarjoaa REST-rajapinnan sekä relaatiotietokanta, kuten kuvassa \ref{fig-spa-rakenne}. Lisäksi sovelluspalvelimeen on yhteydessä muita käyttäjiä omilla selaimillaan, mutta kuvassa esitetty vain yksi selain.
+
+Redux-tilanhallintakirjastossa sovelluksen tilaa muuttavia operaatioita kutsutaan \textit{actioneiksi}. Käyttöliittymän tapahtuman seurauksena voidaan kutsua \textit{action creator} funktiota, joka \textit{dispatchaa actionin}. Tämä dispatchattu action käsitellään reducerissa. Reducer sisältää kutakin actionia vastaavan sovelluksen tilaa muokkaavan funktion. Actionit voivat sisältää myös HTTP-pyyntöjä, joiden kautta operaatio suoritetaan myös palvelimella.
+
+Edellä käytiin läpi miten React muuttaa sovelluksen tilaa kuvaavan objektin HTML-näkymäksi. Perehdytään nyt tilan muuttamiseen Redux-kirjaston avulla. Kuvassa \ref{fig-redux-seq-1} on esitetty korkealla tasolla sovelluksen tilaa muuttavan operaation vaiheet, kun käytössä on React ja Redux selainpuolella ja tietokanta palvelinpuolella. Ensin operaatio tallennetaan palvelimelle ja onnistuneen vastauksen saatuaan selainsovellus suorittaa operaation myös paikalliseen tilaan. Paikalliseen tilaan tapahtunut muutos saa aikaan käyttöliittymän päivityksen ja käyttäjä näkee operaation onnistuneen.
+
+\begin{figure}[ht]
+  \centering
+    \includegraphics[width=0.8\textwidth]{img/flow_redux_db.png}
+  \caption{Redux-sovelluksen tietokantaoperaatio}
+  \label{fig-redux-seq-1}
+\end{figure}
+
+Tarkastellaan samaa operaatiota vielä tarkemmin, sillä tilaan tehtävien muutoksien toteutus osoittautuu olennaiseksi detailiksi, kun tarkastellaan tilaa muokkaavien operaatioiden eli transaktioiden atomisuutta ja eristyneisyyttä luvussa \ref{sec-acid}.
+
+Käyttäjän klikattua tapahtuman käynnistävää elementtiä, sovellus kutsuu tapahtumankä\-sittelijäfunktiota \verb+commentItem+, joka on esitetty alla.
+
+\begin{Verbatim}[fontsize=\footnotesize]
+export const commentItem = (itemId, author, comment) => {
+  return async dispatch => {
+    const response = await itemService.addComment(itemId, author, comment)
+    if (response.status === 200) {
+      dispatch({
+        type: 'ADD_COMMENT',
+        data: { itemId: itemId, author: author, comment: comment },
+      })
+    }
+  }
+}
+\end{Verbatim}
+
+Funktio tekee ensin pyynnön palvelimelle ja sen jälkeen tallentaa muutoksen myös paikalliseen Redux-storessa säilytettävään tilaan, mikäli palvelinpyyntö onnistui. Operaatiot Redux-storeen tehdään \verb+dispatch+-funktion avulla. Sitä kutsuttaessa määritellään haluttu operaatio eli \textit{action} sekä vaadittavat parametrit. Tässä esimerkissä operaatio on siis \verb+NEW_COMMENT+ ja sen tarvitsevat parametrina annetaan uusi kommenttiobjekti. Operaation toiminnallisuus määritellään funktiossa, joka kutsutaan Redux:issa nimellä \textit{reducer}. Tässä tapauksessa se näyttää tältä:
+
+\begin{Verbatim}[fontsize=\footnotesize]
+const reducer = (state = [], action) => {
+  switch (action.type) {
+    case 'NEW_COMMENT':
+      return {
+        ...state,
+        items: items.map(item => {
+          item.id !== action.data.item
+            ? return item
+            : return {
+                ...item,
+                comments: [...item.comments, action.data.comment]}})}
+    default:
+      return state
+}}
+\end{Verbatim}
+
+Tarkastellaan hieman tarkemmin \verb+reducer+-funktion toteutusta. Todellisuudessa \verb+reducer+-funktion \verb+switch+-lauseke sisältää useita kohtia, mutta ne on jätetty tässä esittämättä. Jokaista määriteltyä action:ia vastaa yksi \verb+switch+-lausekkeen kohta, jossa on ohjelmoitu operaation tekemät muutokset Redux-store:n tilaan. Operaatio on tehtävä edellistä tilaa mutatoimatta. Tähän käytetään esimerkissä JavaScriptin \textit{object spread} ja \textit{array spread} operaattoreita. Ne ovat käytännöllisiä reducer-funktioiden toteuttamiseen, sillä ne eivät mutatoi käsiteltävää tietorakennetta vaan palauttavat uuden objektin. Tässä operaatio käy läpi \verb+state.items+-listan ja lisää kommentin oikeaan item-objektiin.
+
+Poimitaan tästä melko yksityiskohtaisesta selostuksesta vielä muutama oleellinen yksityiskohta esille. Funktiosta \verb+commentItem+ nähdään, että operaatio tehdään ensin palvelimelle ja sitten paikalliseen tilaan. Nämä voitaisiin kuitenkin tehdä myös päinvastaisessa järjestyksessä eli paikallinen tila voidaan päivittää jo ennen kuin palvelin on vastannut operaation onnistuneen. Näin voidaan siis valita synkronisuuden ja asynkronisuuden väliltä operaatiokohtaisesti. Lisäksi tilaa päivittävän \verb+reducer+-funktion toiminta on olennainen. Siinä ei muokata olemassa olevaa tilaa vaan luodaan uusi objekti. Lisäksi selaimen yksisäikeisyyden ansioista vain yksi reducer-operaatiot suoritetaan selkeässä peräkkäisjärjes\-tyksessä ilman mahdollisuutta rinnakkaisuudesta johtuviin ongelmiin.
+
+\chapter{Hajautetut tietokannat}
+
+Tässä tutkielmassa vertaillaan spa-sovelluksia hajautettuihin tietokantoihin, joten on syytä esittää määritellä tarkemmin mikä itse asiassa on hajautettu tietokanta. Suppean ja täsmällisen määritelmän antaminen on kuitenkin haasteellista ja sen sijaan on helpompaa kuvailla niitä ominaisuuksia mitä hajautetuilla tietokannoilla tyypillisesti on. Kirjassa Database System Concepts (DSC) \citep{DSC} käytetään tällaista määrittelytapaa. Seuraavassa käydään läpi kirjassa listatut ominaisuudet ja arvioidaan miten ne toteutuvat SPA-sovellusten kohdalla.
+
+\textbf{Tietokanta sijaitsee usealla tietokoneella.} Tämän kohdan tulkinta on tutkielman kannalta olennainen. Jos SPA-sovelluksen paikallinen tila esimerkiksi Reduxissa ajatellaan olevan osa järjestelmän tietokantaa, niin tällöin tietokanta sijaitsee usealla tietokoneella. Paikallinen tila voitaisiin nähdä kenties myös varsinaisesta tietokannasta erillisenä välimuistina eikä varsinaisena osana tietokantaa. Tässä tutkielmassa paikallinen tila nähdään olennaisena osana järjestelmän tietokantaa, jolloin kyseessä on hajautettu tietokanta.
+    
+\textbf{Pisteiden} (engl. site tai node) \textbf{välinen kommunikaatio tapahtuu verkon yli.} SPA-sovelluksessa tietokannan pisteet sijaitsevat käyttäjän selaimessa ja palvelimella. Niiden välinen kommunikaatio tapahtuu verkon yli, joten tältä osin SPA-sovellukset muistuttavat hajautettuja tietokantoja.
+
+\textbf{Pisteillä ei ole jaettua muistia tai levyä.} SPA-sovelluksessa tietokantapisteet sijaitsevat täysin erillisillä laitteilla, joten niillä ei ole jaettua muistia.
+
+\textbf{Laitteistot voivat olla erilaiset tietokannan eri pisteissä.} Osa SPA-sovelluksesta sijaitsee käyttäjän laitteella ja osa palvelimella. Nämä ovat tavallisesti erilaiset laitteistoltaan. Varsinkin käyttäjän laitteet voivat olla hyvinkin vaihtelevia, sillä SPA-sovelluksia voi käyttää niin tavallisilla tietokoneilla kuin tableteilla ja puhelimilla.
+    
+\textbf{Tyypillisesti maantieteellisesti hajautettu.} Käyttäjän laite ja sovelluspalvelin voivat sijaita hyvinkin etäällä toisistaan, joten SPA-sovellus on yleensä maantieteellisesti hajautettu.
+
+\textbf{Transaktio voi lukea ja käsitellä dataa toisesta pisteestä kuin omasta aloituspisteestään.} SPA-sovelluksessa transaktion aloituspisteeksi voidaan ajatella käyttäjän web-selain. Käyttäjän tekee operaatioita, jotka muokkaavat dataa sekä paikallisessa Redux-tietokannassa että http-pyynnön kautta myös palvelimella sijaitsevassa tietokannassa.
+
+Tietojärjestelmän tai tietokannan hajauttamiselle sekä datan replikoinnille on monia syitä ja listaukset vaihtelevat hieman lähteestä ja näkökulmasta riippuen. Seuraavassa on koostettu listaus eri lähteissä mainituista motivaattoreista koskien niin hajautettuja järjestelmiä yleensä kuin hajautettuja tietokantoja. Näin muodostetaan ensin laaja käsitys järjestelmien hajauttamisen syistä ja arvioitua mitkä näistä ovat olennaisia myös SPA-sovellusten kohdalla. Näin saadaan muodostettua käsitys siitä millaisiin hajautettuihin tietokantoihin SPA-sovelluksia kannattaa vertailla.
+
+\textbf{Maantieteellisesti hajautettu ympäristö} voi olla motivaatio tai syy järjestelmän hajauttamiselle \citep{DSAA}. Järjestelmään kuuluessa olennaisesti toisistaan fyysesti erillään olevia laitteita, kuten pankkiautomaatteja, järjestelmä on väistämättä hajautettu. Kyseessä voi siis olla enemmänkin toimintaympäristön asettama rajoite kuin tavoiteltava ominaisuus. Hajauttamalla tietokanta maatieteellisesti voidaan saavutta muita haluttuja ominaisuuksia. SPA-sovellukset toimivat yleensä maantieteellisesti hajautussa ympäristössä: asiakasohjelma eli verkkosovellus sijaitsee käyttäjän omalla laitteella ja sovelluspalvelin sekä tietokanta konesalissa kaukana käyttäjästä.
+
+\textbf{Laskentanopeus}, joka on mahdollista saavuttaa yhdellä prosessorilla on rajallista ja joissain tapauksissa riittämätöntä. Laskentaa täytyy siis jakaa useampaan osaan, joita voidaan laskea rinnakaisesti useilla prosessoreilla \citep{DSAA}. Näin toimivat \textbf{rinnakkaistietokannat} (engl. parallel database). SPA-sovelluksissa ei ole ole kyse laskennan hajauttamisesta tällä tavalla.
+
+\textbf{Skaalautuvuus} \citep{Tanenbaum} tarkoittaa hajautetuissa järjestelmissä monia asioita. Se voi tarkoittaa esimerkiksi kuormantasausta ja useiden pyyntöjen palvelemista. Tämä on relavantti piirre myös SPA-sovelluksissa. Järjestelmä pystyy tasaamaan lukuoperaatioden kuormaa selaimessa sijaitsevan datan avulla. Käyttäjän tehdessä sivustolla operaation, joka vaatisi tavanomaisessa toteutustavassa lukuoperaatiota tietokantaan, voidaankin SPA-sovelluksessa lukea tarvittava data selaimen muistista. Jos lukuoperaatiot ovat raskaita, kuten hakuoperaatioita, tästä voi olla merkittävä etu järjestelmän suorituskyvylle. Skaalautuvuus voi tarkoittaa myös suuren datamäärän hallitsemista useiden palvelimien avulla \citep{Kleppmann}. Tällöin tietokannan data jaetaan useiden palvelimien kesken siten, että yksittäinen palvelin säilyttää vain tiettyä osaa datasta. Tällaisia ovat \textbf{partitioidut tietokannat}. SPA-sovelluksissa taustajärjestelmän tietokanta huolehtii koko datamäärästä ja selainten paikallinen data on lähinnä väliaikainen kopio tämän datan osasta.
+ 
+\textbf{Vasteajan pienentäminen.} Viemällä kopio datasta lähellä asiakasta voidaan parantaa erityisesti datan lukemiseen liittyvää vasteaikaa \citep{rfc677, Kleppmann}. Näin toimivat varsinkin \textbf{replikoidut tietokannat}. Tämä on tutkielman näkökulmasta kenties olennaisin syy tietokannan hajauttamiselle. SPA-sovelluksien tärkeä motivaattori on työpöytäsovellusten kaltaisen responsiivisen käyttökokemuksen tuominen selaimeen. Toisintamalla dataa useisiin pisteisiin voidaan viedä data lähemmäs asiakkaita ja näin pienentää datan lukemisen vasteaikaa. SPA-sovelluksissa data viedään mahdollisimman lähelle asiakasta: hänen omalle laitteelleen selaimen muistiin.
+
+\textbf{Resurssien jakaminen} eri prosessien tai käyttäjien kesken voi olla syy järjestelmän hajauttamiselle. Ghosh \citep{DSAA} jakaa jaettavat resurssit kahteen kategoriaan: laitteistoresursseihin ja ohjelmistoresursseihin. Jaettavia laitteistoja voivat olla esimerkiksi printterit tai kovalevyt. Jaettavasta ohjelmistoresurssista esimerkkinä käyte\-tään Google Docs tekstinkäsittelysovelluksen käyttämistä selaimen kautta. Tällöin käyttäjä ei itse asenna käyttä\-määnsä sovellusta vaan hyödyntää palvelimelle asennettua ohjelmistoa. Nämä esimerkit jättävät kuvan jaettavista resursseista hieman kapeaksi, mutta Silberschatz \citep{DSC} listaa edellisten lisäksi myös kaksi tämän tutkielman näkökulmasta olennaista resurssia: data ja tiedostot. Esimerkkinä käytetään yliopistojen yhteistä hajauttua tietokantaa. Ilman yhteistä järjestelmää tiedonvaihto jouduttaisiin tekemään muulla tavalla. Myös SPA-sovelluksissa jaetaan ohjelmistoresursseja käyttäjien kesken, sillä käyttäjät lataavat sovelluksen selaimeensa eikä erillistä asentamista vaadita. Myös palvelimen tietokannan tarjoama tallennuskapasiteetti voidaan nähdä resurssien jakamisena.
+
+\textbf{Vikasietoisuus ja saatavuus}. Yhdellä palvelimella suoritettavat ohjelmat ovat alttiita esimerkiksi laitteistovioista johtuville häiriöille ja katkoksille. Hajautetut järjestelmät pystyvät selviämään vastaavista vioista erilaisten häiriönsietomenetelmien avulla \citep{DSAA, DSC, Tanenbaum, rfc677}. Replikoidut tietokannat parantavat datan saatavuutta tarjoamalla useita solmuja, joista sovellukset voivat lukea dataa. Tällöin yhden palvelimen vikaantuessa pyyntöjä voidaan palvella toiselta palvelimelta \cite{DSAA}. SPA-malli parantaa verkkosovellusten ja -sivustojen vikasietoisuutta, sillä sivuston selailuun tarvittava data voidaan ladata valmiiksi laitteelle. SPA-malli parantaa siis saatavuutta käyttäjille, jotka ovat jo aloittaneet sovelluksen käytön. Uudet käyttäjät eivät voi aloittaa sovelluksen käyttöä tietokantapalvelimen ollessa saavuttamattomissa. Uudet käyttäjät eivät myöskään pysty hyödyntämään muiden käyttäjien paikallisia kopioita datasta. SPA-malli parantaa siis saatavuutta samaan tapaan kuin replikoidut tietokannat, mutta vain olemassa oleville käyttäjille. 
+
+\textbf{Paikallinen autonomia.} Silberschatzin \citep{DSC} mukaan mahdollisuus paikalliseen autonomiaan on yksi hajauttujen tietokantojen merkittävimmistä eduista. Voidaan siis jakaa esimerkiksi datan omistajuus tietokannan pisteiden kesken niin, että kukin piste hallitsee itselleen kuuluvaa dataa sen sijaan, että yksi keskuspiste hallinnoisi kaikkea dataa. Tästä voidaan käyttää esimerkkinä vähittäistavara\-kauppaa, jossa kullakin kaupalla on oma tietokantapisteensä. Jokainen kauppa on vastuussa esimerkiksi oman varastosaldonsa ylläpitämisestä. Paikallinen autonomia liittyy myös toimintavarmuuteen \citep{Date}. Esimerkiksi kauppa haluaa ylläpitää varastosaldoaan vaikka järjestelmässä olisi häiriö, joka estää kommunikaation muihin pisteisiin. Paikallinen autonomian tavoitteleminen ei ole tunnusomaista SPA-sovelluksille, mutta yleistyessään local first -malli \cite{local-first} voi viedä SPA-sovelluksia tähän suuntaan.
+
+Seuraavassa taulukossa on koottu tiiviiseen muotoon edellä tehnyt analyysit.
+
+\begin{center}
+\begin{tabular}{ | m{5cm} | m{2cm} | m{2cm} | m{2cm} | m{2cm} | }
+ \hline
+ \textbf{Ominaisuus} & \textbf{Rinn.} & \textbf{Part.} & \textbf{Repl.} & \textbf{SPA}\\ 
+ \hline
+ Maant. hajautus &   & X & X & X \\
+ \hline
+ Laskentanopeus & X & X &   &   \\
+ \hline
+ Kuormantasaus &   &   & X & (X) \\
+ \hline
+ Suuri datamäärä & X & X &   &   \\
+ \hline
+ Vasteaika &   &   & X & X \\
+ \hline
+ Resurssien jakaminen &   & X & X & (X) \\
+ \hline
+ Paikallinen autonomia &   &   & X & (X) \\
+ \hline
+\end{tabular}
+\end{center}
+
+Tästä hajautettujen järjestelmien ja tietokantojen motivaattoreiden listauksesta huomataan, että useat niistä ovat relavantteja myös SPA-sovellusten kohdalla. Osa motivaattoreista pätee jossain määrin SPA-kontekstissa, mutta selkein yhtymäkohta on vasteajan pienentäminen. Se on olennainen syy käyttää SPA-mallia, sillä juuri pieni vasteaika erottaa SPA-sovellukset perinteisen mallin web-sovelluksia. Tämän havainnon perusteella kannattaa kiinnittää huomioita hajautettuihin tietokantoihin, jotka pyrkivät erityisesti pienentämään vasteaikaa. Tällaisia ovat replikoidut tietokannat. 
+
+\chapter{Replikoidut tietokannat}
+\label{sec-arkkitehtuurit-teoria}
+
+Tässä luvussa perehdytään tarkemmin replikoituihin tietokantohin. Replikoituja tietokantoja voidaan luokitella ainakin niiden käyttämien isäntäpisteiden (engl. master) määrän, topologioiden, replikoinnin synkronisuuden sekä pisteiden homogeenisuuden suhteen. Käy\-dään läpi näitä tekijöitä ja arvioidaan SPA-sovelluksia, kunkin osa-alueen näkökulmasta. Tavoitteena tarkentaa vielä näkemystä siitä, että millaisia replikoituja tietokantoja SPA-sovellukset ovat.
+
+%\textbf{Multimaster vai master-standby?}
+
+Replikoidut tietokannat voidaan jakaa kolmeen kategoriaan sen mukaan kuinka monta isäntäpistettä eli kirjoitusoperaatioita koordinoivaa pistettä järjestelmässä on. Kategoriat \citep{Kleppmann} ovat:
+
+\begin{itemize}[topsep=2pt,itemsep=1pt]
+    \item \textbf{Master-standby} -arkkitehtuuri eli yhden isäntäpisteen malli.
+    \item \textbf{Multi-master} -arkkitehtuuri eli useiden isäntäpisteiden malli.
+    \item \textbf{Leaderless}-arkkitehtuuri eli yksikään pisteistä ei toimi operaatioita koordinoiva isäntänä.
+\end{itemize}
+
+Usein isäntäpisteitä on yksi eli järjestelmä noudattaa master-standby -arkkitehtuuria, kuten kuvassa \ref{fig-masterstandby}\citep{Kleppmann}. Siinä kaikki kirjoitusoperaatiot lähetetään isäntäpisteelle eli master- tai primary-palvelimelle. Se suorittaa operaation paikallisesti ja lähettää muutoksen muihin pisteisiin, joita kutsutaan standby-palvelimiksi. Lukuoperaatiota tehdessään asiakkaat voivat kutsua standby- tai master-palvelinta.
+
+\begin{figure}[ht]
+  \centering
+    \includegraphics[width=0.9\textwidth]{img/master-standby.png}
+  \caption{Master-standby -arkkitehtuuri}
+  \label{fig-masterstandby}
+\end{figure}
+
+\clearpage
+
+Isäntäpisteitä voi olla myös useita, jolloin kyseessä on multi-master -arkkitehtuuri, kuten kuvassa \ref{fig-multimaster} \citep{Kleppmann}. Kaikki järjestelmän pisteet voivat siis toimia isäntäpisteinä ja vastaanottaa kirjoitusoperaatioita asiakasohjelmilta.
+
+\begin{figure}[ht]
+  \centering
+    \includegraphics[width=0.9\textwidth]{img/multimaster.png}
+  \caption{Multi-master -arkkitehtuuri}
+  \label{fig-multimaster}
+\end{figure}
+
+Replikoitu tietokanta voi olla toteutettu myös niin, että yksikään pisteistä ei toimi isäntänä. Tätä kutsutaan leaderless-arkkitehtuuriksi \cite{Kleppmann}. Tilanne muistuttaa multi-master -arkkitehtuuria, sillä kaikki pisteet voivat vastaanottaa kirjoitusoperaatioita. Eroavaisuus syntyy siitä, että asiakasohjelmistot voivat suorittaa operaatioita kommunikoimalla useiden pisteiden kanssa. Päivitysoperaatiota varten asiakasohjelma tekee pyynnön yli puolelle tietokannan pisteistä. Asiakkaalle riittää tietokantapisteiden enemmistön hyväksynnät, jotta se voi varmistua operaation onnistumisesta. Leaderless-arkkitehtuurissa koordinointivastuuta on siis siirretty asiakkaille, kun yksikään tietokantapisteistä ei toimi isäntänä ja operaatioden koordinaattorina.
+
+\begin{figure}[ht]
+  \centering
+    \includegraphics[width=0.9\textwidth]{img/spa_is_replicated_db.png}
+  \caption{SPA-sovelluksen arkkitehtuuri}
+  \label{fig-spa-is-replicated}
+\end{figure}
+
+Kuvassa \ref{fig-spa-is-replicated} on esitetty SPA-sovellus niin, että vertailu replikoituihin tietokantoihin on helppoa. Siinä käyttäjä näkee sovelluksen tuottamia näkymiä ja on vuorovaikutuksessa sovelluksen kanssa sen käyttöliittymän kautta. Sovellus muuntaa käyttäjän interaktiot operaatioksi, jotka muuttavat sovelluksen tilaa. Sovellus suorittaa operaatiot funktiokutsuina paikalliseen tilanhallintajärjestelmään, joka välittää ne edelleen palvelimelle ja tietokantaan. Jos palvelin ei sisällä erityistä logiikkaa, voidaan tämä paikallisen tilanhallinnan ja palvelimella sijaitsevan tietokannan välinen operointi nähdä kahden tietokantapisteen välisenä replikointina tai osittaisena replikointina.
+
+SPA-sovellukset ovat selvästi lähempänä multi-master kuin master-standby -arkkitehtuuria, jos tarkastellaan kuvia \ref{fig-masterstandby}, \ref{fig-multimaster} sekä kuvaa \ref{fig-spa-is-replicated}. Multi-master -arkkitehtuurissa asiakas keskustelee yhden tietokantapisteen kanssa ja tietokantajärjestelmä hoitaa päivitysten propagoinnin muihin pisteisiin \citep{DSC}. Kuvassa \ref{fig-spa-is-replicated} SPA-sovelluksen toiminta on esitetty juuri tällä tavalla.
+
+\begin{figure}[ht]
+  \centering
+    \includegraphics[width=0.9\textwidth]{img/spa_master-standby.png}
+  \caption{SPA-sovelluksen master-standby versio}
+  \label{fig-spa-is-master-standby}
+\end{figure}
+
+SPA-sovellus olisi kuitenkin mahdollista rakentaa ja kuvata myös enemmän master-standby -arkkkitehtuuria mukaillen. Kuvassa \ref{fig-spa-is-master-standby} on esitetty tätä lähestymistapaa. Asiakassovelluksella on oma kopio datasta paikallisessa muistissaan, kuten aiemminkin. Tässä tapauksessa paikallinen kopio on tosin ainoastaan luettavissa. Kaikki päivitysoperaatiot on tehtävä suoraan master-pisteenä toimivalle palvelimelle. Palvelin puolestaan hoitaa päivitysten propagoinnin asiakkaille, joiden paikallinen kopio datasta vastaa master-standby -arkkitehtuurin standby-pistettä.
+
+\textbf{Replikoinnin synkronisuus}
+
+Replikoidun tietokannan toiminnassa on olennaista tehdäänkö replikointi synkronisesti vai asynkronisesti. Jotta kaikki tietokannan replikat olisivat jatkuvasti samansisältöisiä eli eheitä on replikointi tehtävä synkronisesti. Tämä kuitenkin voi aiheuttaa suorituskykyhaasteita, joten replikointi voidaan eheyden vaarantumisesta huolimatta päätyä tekemään asynkronisesti. Tämä ongelma on kuvailtu lukuisissa hajauttuja tietokantoja käsittelevissä lähteissä \citep{gray-replication, Tanenbaum, DSAA, DSC, Kleppmann}.
+
+\begin{figure}[ht]
+  \centering
+    \includegraphics[width=0.8\textwidth]{img/db_sync_operation.png}
+  \caption{Synkroninen replikointi}
+  \label{fig-sync-replikointi}
+\end{figure}
+
+Synkroninen replikointi tarkoitta sitä, että tietokannan piste vastaa asiakkaalle operaation onnistuneen vasta, kun päivitys on saatu toteutettua jokaisella hajautetun tietokannan pisteistä. Tämä operaatioiden globaali atomisuus toteutetaan usein kaksi- tai kolmevaiheisella sitoutumiskäytännöllä. Siinä transaktion aloittanut piste kysyy ennen operaation sitoutumista kaikilta muilta tietokannan pisteiltä, että ovatko ne valmiita sitouttamaan operaation. Jos kaikki vastaavat myöntävästi, aloittaja vastaa myös asiakkaalta hyväksyvästi. Jos yksikin vastaa kieltävästi transaktio perutaan. Samoin, jos kaikilta pisteiltä ei saada vastausta transaktio joudutaan perumaan. Tämä onkin merkittävä haaste synkronisessa replikoinnissa. Tietokantapisteiden välisen verkkoyhteyden häiriöt estävät päivitysten tekemisen kokonaan. Järjestelmän saatavuus voi siis kärsiä synkronisuudesta. Lisäksi synkronisuuden vaatima järjestelmän laajuinen koordinointi vaikuttaa järjestelmän suorituskykyyn merkittävästi myös tietoliikenteen toimiessa normaalisti.
+
+Useissa tapauksissa ainoaksi ratkaisuksi jääkin eheysrajoitteiden laskeminen sallimalla replikoinnin asynkronisuus. Tällöin tietokantapiste voi vastata asiakkaalle operaation onnistumisessa ennen vahvistuksen kysymistä muilta tietokantapisteiltä. Menettelystä käytetään myös nimitystä laiska replikointi (engl. lazy replication) \citep{gray-replication}. Seurauksena on kuitenkin mahdollisia ongelmia datan eheyden kanssa, sillä tietokantapisteet ovat vähintäänkin hetkittäin eri sisältöiset.
+
+\begin{figure}[ht]
+  \centering
+    \includegraphics[width=0.8\textwidth]{img/db_async_operation.png}
+  \caption{Asynkroninen replikointi}
+  \label{fig-async-replikointi}
+\end{figure}
+
+Eric Brewer kiteytti tämän eheyden ja saatavuuden välisen valintatilanteen CAP-teoreemaksi vuonna 2000 \cite{CAP}. Teoreema on saanut nimensä sanoista \textit{consistency}, \textit{availability} ja \textit{partition tolerance} eli suomeksi eheys, saatavuus ja ja osituksen sietokyky. Näistä viimeinen tarkoittaa siis käytännössä järjestelmän sisäisten verkkokatkosten sietokykyä. Sana \textit{partition} viittaa tässä siihen, että hajauttu järjestelmä on jakautunut osiin, jotka eivät kykene kommikoimaan keskenään. Teoreeman väite on siis se, että hajautettu järjestelmä kykenee toteuttamaan korkeintaan kaksi näistä mainituista ominaisuuksista. Verkkoyhteyden häiriöiden eli järjestelmän osituksen sattuessa on täten valittava eheyden ja saatavuuden väliltä. Asynkroninen replikointi tarkoittaa saatavuuden valitsemista ja vastaavasti synkroninen eheyden valitsemista.
+
+Jos tarkastellaan luvussa \ref{chapter-spa} esiteltyä SPA-sovelluksen toimintaa niin voidaan todeta, että siinä on kyseessä synkronisesta replikoinnista mikäli tarkastellaan palvelinta ja vain yhden käyttäjän laitetta. Päivitys paikalliseen tilaan tehdään vasta, kun palvelin on vastannut operaation onnistuneen tietokannassa. Synkroninen replikointi kahden tietokantapisteen välillä toimii vastaavasti. Tilanne kuitenkin puuttuu, jos tarkastellaan kaikkien käyttäjien laitteita. Synkroninen replikointi kaikkiin laitteisiin vaatisi päivityksen lähettämistä palvelimelta muiden käyttäjien selaimiin tai p2p-yhteyksien käyttämistä päivityksen levittämisessä. Tämä ei kuitenkaan ole mahdollista ainoastaan käyttämällä REST-rajapintaa selaimen ja palvelimen väliseen kommunikaatioon. Lisäksi synkroninen replikointi lukuisien muiden käyttäjien laitteisiin mahdollisesti epävarmojen verkkoyhteyksien yli olisi melkoisen haastava tehtävä ja sitä voitaneen pitää harvinaisena erikoistapauksena. Näin synkronisesta replikointia on on käytännöllistä tarkastella yhden käyttäjän ja palvelimen välillä.
+
+\begin{figure}[ht]
+\centering
+\begin{minipage}{.5\textwidth}
+  \centering
+  \includegraphics[width=1\linewidth]{img/spa_sync_operation.png}
+  \captionof*{figure}{\textbf{Kuva \ref{fig-redux-seq-1}}}
+\end{minipage}%
+\begin{minipage}{.5\textwidth}
+  \centering
+  \includegraphics[width=1\linewidth]{img/db_sync_operation.png}
+  \captionof*{figure}{\textbf{Kuva \ref{fig-sync-replikointi}}}
+\end{minipage}
+\caption{Operaatioiden vertailu}
+\label{fig-operaatioiden-vertailu}
+\end{figure}
+
+Vertailun helpottamiseksi kuvassa \ref{fig-operaatioiden-vertailu} on esitetty rinnakkain aiemmin esitellyt SPA-sovelluksen tietokantaoperaatioiden vaiheita sekä synkronisen replikoinnin vaiheita esittävät kuvat. Näissä eroavaisuutena on käytännössä vain keskimmäisen kerroksen toiminta. SPA-sovelluksessa paikallinen tila päivitetään vasta palvelimelta saadun vastauksen jälkeen. Hajautetuissa tietokannoissa päivitys voidaan tehdä isäntäpisteellä jo ennen toisen pisteen vahvistusta, mutta se sitoutetaan vasta vahvistuksen jälkeen.
+
+SPA-sovelluksissa voidaan kuitenkin tehdä replikointi myös asynkronisesti. Tätä käytetään esimerkiksi, kun halutaan käyttää mallia nimityksiä optimistiset päivitykset tai optimistinen käyttöliittymä (engl. optimistic ui) \citep{optimistic-ui}. Siinä käyttöliittymä päivitetään heti käyttäjän tehtyä jonkin operaation ilman, että vastausta operaation onnistumisesta odotetaan palvelimelta.
+
+\textbf{Master-standby variantit}
+
+PostgreSQL käyttää dokumentaatiossaan \ref{fig-masterstandby} kuvan kaltaisesta arkkitehtuurista nimitystä \textit{hot standby}. Sen lisäksi on olemassa niin kutsuttu \textit{warm standby} -arkkitehtuuri, jossa standby-palvelimet eivät salli yhteyksiä asiakasohjelmilta. Ne toimivat ainoastaan ajantasaisina varmuuskopioina ja varajärjestelmänä häiriötilanteita varten. Mikäli primary-palvelin lakkaa toimimasta voidaan ottaa käyttöön warm standby -palvelin. SPA-sovelluksiin sovellettuna warm standby -malli voisi tarkoittaa paikallisen datan käyttämistä vain, jos verkkoyhteyspalvelimelle on poikki tai hidas. Muutoin sovellus lataisi jokaisen näkymän palvelimelta esimerkiksi varmistaakseen datan ajantasaisuuden.
+
+Master-standby mallista on olemassa \citep{70ties, Tanenbaum} myös variantti, jossa tietokantapisteet voivat vaihtaa rooleja. Näin voidaan väliaikaisesti siirtää datan kirjoitusoikeus jollekin standby-palvelimista. Tämä voi tehostaa useiden peräkkäisten päivitysoperaatioden suorittamista, kun kirjoitukset sallitaan lähellä päivityksiä tekevää asiakasta.
+
+Tämän mallin mainitaan soveltuvan myös offline-tilassa toimivien mobiililaitteiden (mobile computers) käyttöön. Ennen verkkoyhteyden katkaisemista mobiililaite pyytää itselleen oikeuden toimia tietokannan primary-pisteenä. Näin laite voi tehdä päivityksiä dataan verkkoyhteyden puuttumisesta huolimatta ja palatessaan verkkoon päivitykset lähetään muihin pisteisiin ja primary-rooli siirretään takaisin normaalille palvelimelle. Tämä käyttötapa on suoraan sovellettavissa SPA-sovelluksiin, joita käytetään usein juuri mobiililaitteilta.
+
+\textbf{Multi-master variantit}
+
+Kun multi-master -arkkitehtuuria käyttävä tietokanta sisältää vähintään kolme isäntäpistettä, on mahdollista järjestää replikointi käyttäen erilaisia topologioita \citep{Kleppmann}. Kuvassa \ref{fig-multimaster-topologiat} on esitetty kolme esimerkkiä. Kehä-topologiassa (engl. circular) jokainen piste huolehtii päivitysten propagoinnista ainoastaan yhdelle muista isäntäpisteistä. Tähti-topologiassa (engl. star) yksi pisteistä on keskeisessä roolissa ja kaikki muut pisteet lähettävät päivityksensä sille. Keskuspiste propagoi saamansa päivitykset edelleen kaikille muille pisteille. Kaikki-kaikille topologiassa kukin piste lähettää päivitykset suoraan kaikkiin muihin pisteisiin.
+
+\begin{figure}[ht]
+  \centering
+    \includegraphics[width=0.9\textwidth]{img/topologiat.png}
+  \caption{Multi-master -topologiat}
+  \label{fig-multimaster-topologiat}
+\end{figure}
+
+Näistä topologioista tähti-topologia vastaa parhaiten SPA-sovelluksia. Siinä yksi pisteistä on keskeisessä asemassa ja kaikki päivitykset kulkevat sen kautta. SPA-sovelluksissa tämä keskeinen piste on palvelin. Kehä- ja kaikki-kaikille -topologiat vaatisivat suoraa asiakkaiden välistä kommunikaatiota ja se ei ole tyypillistä SPA-sovelluksille, jotka noudattavat ennemmin client-server kuin p2p -arkkitehtuuria. WebRTC-protokolla mahdollistaa kuitenkin suoran selainten välisen kommunikaation, jolloin kaikki-kaikille -topologia olisi mahdollinen myös SPA-sovelluksille.
+
+\textbf{Hetero- vai homogeeninen}
+
+Hajautetut tietokannat voidaan luokitella myös homogeenisiin ja heterogeenisiin järjestelmiin. Homogeenisissä järjestelmissä jokainen hajautetun tietokannan pisteistä käyttää samaa tietokannanhallitajärjestelmää. Lisäksi pisteet ovat tietoisia toisistaan ja tekevät yhteistyötä kyselyjen suorittamisessa. Heterogeeniset tietokannat voivat käyttää eri pisteissä erilaisia tietokantajärjestelmiä ja tietomalleja. Pisteiden välinen yhteistyö ja tietoisuus toisistaan voi olla rajallisempaa kuin homogeenisissä järjestelmissä \citep{DSC}. SPA-sovellukset ovat selvästi heterogeenisiä hajautettuja tietokantoja, sillä selaimella ja palvelimella käytetään erilaisia tietokannanhallintajärjestelmiä.
+
+\chapter{Replikointiprotokollat}
+\label{sec-protokolla-teoria}
+
+Hajautetuissa tietokannoissa on käytössä useita erilaisia tapoja datan replikointiin pisteiden välillä. Kirjassa Designing data-intensive applications \citep{Kleppmann} listataan neljä erilaista keinoa replikoinnin toteuttamiseen. Vastaavat menetelmät on listattu myös PostgreSQL dokumentaatiossa aihetta käsittelevässä artikkelissa \citep{postgres-replication-solutions}. Seuraavassa esitellään nämä menetelmät ja poimitaan niistä piirteitä, jotka tekevät niistä erilaisia. Nämä ominaisuudet muodostavat mallin, jonka avulla vertaillaan web-sovelluksissa käytettyjä tiedonsiirron tekniikoita replikoituihin tietokantoihin tältä osin.
+
+\section{PostgreSQL replikointiprotokollat}
+
+\subsection{Lausekeperusteinen replikointi}
+\label{sec-statement-based-replication}
+
+Lausekeperusteisessa replikoinnissa (engl. Statement-based replication) kirjoitusoperaation vastaanottanut piste lähettää saamansa pyynnön sellaisenaan muille tietokantapisteille \cite{Kleppmann}. SQL-tietokannoissa tämä tarkoittaa siis SQL-lauseen sekä sen parametrien lähettämistä.
+
+Vaikka tekniikka on konseptina melko yksinkertainen se sisältää joitakin yksityiskohtia, jotka vaikeuttavat sen toteuttamista \cite{Kleppmann}. Vastaanottavan tietokantapisteen on voitava parsia ja suorittaa lause juuri samalla tavalla kuin lähettävä piste, jotta operaatioiden lopputulos olisi sama molemmissa pisteissä. Tämä tarkoittaa, että suoritettavat lauseet eivät saa sisältää epädeterministiä funktiokutsuja, kuten \verb+RAND()+ tai \verb+NOW()+. Operaatiot on myöskin suoritettava täsmälleen samassa järjestyksessä jokaisessa pisteessä. Lisäksi mahdolliset sivuvaikutukset, kuten laukaisimet (engl. trigger) tai tallennetut proseduurit (engl. stored procedure) monimutkaistavat menetelmän käyttöä. Kleppmann mainitseekin, että lukuisten erikoistapausten takia usein suositaankin jotakin muuta replikointimenetelmää \citep{Kleppmann}
+
+PostgreSQL dokumentatiossa \citep{postgres-replication-solutions} kuvailtu malli on variaatio, jossa SQL-lauseiden välittämisen hoitaa tietokantapisteen sijasta välikerrosohjelmisto. PostgreSQL ei siis itsessään tarjoa mahdollisuutta tähän menetelmään, mutta dokumentaatio mainitsee kaksi kolmannen osapuolen ohjelmistoa, jotka tarjoavat tämän toiminnallisuuden: Pgpool-II ja Continuent tungsten.
+
+\subsection{Transaktiolokien lähetys}
+
+Transaktiolokien lähetys -replikointimenetelmä (engl. Write-ahead log shipping) perustuu transaktiolokeina eli WAL-lokeina, jotka kirjoitetaan relaatiotietokannassa levylle transaktioiden aikana. Nämä lokit muodostavat yhdessä tilannevedosten (engl. snapshot) kanssa täydellisen varmuuskopion tietokannan datasta. Näitä lokeja voidaan käyttää myös tietokannan replikoimiseen lähettämällä lokitietueet standby-serverille. \cite{Kleppmann}
+
+Transaktiolokit kuvaavat tietokantaan tapahtuvia muutoksia hyvin matalalla tasolla \citep{Kleppmann}. Lokissa käytetään osoittimena levylohkojen osoitteita ja muutos ilmaistaan muuttuneina bitteinä. Standby-palvelimesta muodostuu siis täsmällinen kopio primarystä jopa bittitasolla tarkasteltuna. Tekniikkaa kutsutaankin fyysiseksi replikoinniksi. Tämä tarkoittaa samalla sitä, että lokeja voidaan käyttää replikointitekniikkana vain täsmälleen samanlaisen tietokantahallintajärjestelmän välillä. Tämä vaikeuttaa esimerkiksi tietokantajärjestelmän versiopäivitysten tekemistä ilman seisokkiaikaa.
+
+\subsection{Looginen riviperusteinen replikointi}
+
+Vaihtoehtona fyysiselle replikoinnille on olemassa looginen riviperusteinen replikointi (engl. Logical row-based log replication) \citep{Kleppmann}. Siinä replikointiin käytettävä formaatti ei ole niin vahvasti sidoksissa tietokantajärjestelmään kuin fyysisessä replikoinnissa. Esimerkkinä relaatiotietokannan päivitysoperaation looginen loki sisältää taulun nimen, päivitetyn rivin pääavaimen sekä päivitettyjen sarakkeiden nimet ja datan. \citep{postgres-replication-solutions}.
+
+Loogista replikointia käyttäen on helpompi ylläpitää yhteensopivuutta tietokantajärjestelmän versioiden välillä \citep{Kleppmann}. Jopa replikointi eri tietokantajärjestelmien välillä on mahdollista. Loogisia lokeja voidaan myös käyttää datan reaaliaikaiseen viemiseen toiseen järjestelmään, kuten tietovarastoon. Lisäksi looginen replikointi mahdollistaa PostgreSQL-tietokannoissa multi-master -konfiguraation käytön toisin kuin WAL-lokiin perustuva replikointi \citep{postgres-replication-solutions}.
+
+\subsection{Laukaisinperusteinen replikointi}
+
+Laukaisinperusteinen replikointi (engl. Trigger based replication) poikkeaa edellisestä toteutuskerrokseltaan. Kolme edellä esiteltyä replikointimenetelmää ovat tietokantajärjestelmän tarjoamia tekniikoita. Joissain tilanteissa kuitenkin voidaan tarvita räätälöidympiä ratkaisuja. Näitä voidaan toteuttaa laukaisimien ja itse kirjoitetun sovelluskoodin avulla \citep{Kleppmann}. Laukaisimien avulla voidaan suorittaa haluttuja tallennettuja proseduureja automaattisesti datan muuttuessa. Asettamalla laukaisimet vain haluttuihin tauluihin voidaan rajata replikointi vain osaan tietokannan sisällöstä. Näin voidaan esimerkiksi tallentaa tapahtunut muutos halutussa formaatissa erilliseen tietokantatauluun, josta ulkoinen ohjelma voi lukea muutokset ja lähettää ne edelleen replikoinnin kohteeseen. Tähän ulkoiseen ohjelmaan voidaan toteuttaa esimerkiksi konfliktien ratkaisuun tarvittavaa logiikkaa. Huonoina puolina tässä tekniikassa ovat järjestelmän sisäisiä replikointimenetelmiä suurempi mahdollisuus ohjelmointivirheisiin sekä suurempi määrä ylimääräistä prosessointia.
+
+\subsection{Protokollien ominaisuudet}
+
+Edellä käsiteltiin yleisesti käytössä olevia hajautettujen tietokantojen käyttämiä replikointiprotokollia. Seuraavaksi poimitaan niistä sekä replikointia käsittelevästä kirjallisuudesta ominaisuuksia, jotka ovat mielenkiintoisia protokollia vertaillessa.
+
+Tanenbaum jakaa \citep{Tanenbaum} replikointimenetelmät kolmeen kategoriaan \textbf{propagoitavan artefaktin} mukaan. Nämä vaihtoehtoiset artefaktit ovat notifikaatio, data ja operaatio. 
+
+Päivitysoperaation toteuttanut tietokantapiste voi lähettää muille pistelle pelkän yksinkertaisen ilmoituksen eli notifikaation siitä, että tietokannan data on päivittynyt. Ilmoituksen saavan pisteen vastuulla on päivittyneen datan pyytäminen. Näin toimivat esimerkiksi invalidointiprotokollat. Lähetettävät viestit ovat hyvin pieniä, joten menetelmä voi vähentää turhaa tietoliikennettä erityisesti, jos päivitysoperaatioita tapahtuu suhteellisen paljon lukuoperaatioihin verrattuna.
+    
+Notifikaation sijaan voidaan lähettää muuttunut data sekä tarvittava määrä yksilöivää tietoa muutoksen sijoittamiseen oikeaan paikkaan. Relaatiotietokannoissa tämä tarkoittaa siis esimerkiksi taulun nimeä ja pääavainta sekä mahdollisesti sarakkeiden nimiä. 
+
+Kolmas vaihtoehto on dataan kohdistuvan operaation eli esimerkiksi SQL-lauseen lähettäminen, kuten lausekeperustaisessa replikoinnissa.
+
+Replikointi voidaan tehdä käyttäen \textbf{push- tai pull-}mallia \citep{Tanenbaum}. Push-mallissa eli työntävässä mallissa päivityksen saanut palvelin huolehtii muutoksen lähettämisestä muihin tietokantapisteisiin. Tätä käytetään etenkin järjestelmissä missä replikat halutaan pitää mahdollisimman samansisältöisinä. Push-malli on tehokas varsinkin, jos tietokantapisteisiin tehdään paljon lukuoperaatioita suhteessa päivityksiin. Tämä toteutuu varsinkin silloin, kun yhtä tietokantapistettä käyttävät lukuoperaatiohin useat asiakkaat. Silloin suuri osa työnnetyistä päivityksistä tulee myös luetuksi ainakin kerran.
+
+Pull-mallissa dataa käyttävä tietokantapiste on vastuussa päivitysten pyytämisestä isäntäpisteeltä. Mallin etuna on se, että isäntäpalvelimella ei tarvitse push-mallin tavoin pitää kirjaa pisteistä, joille päivitykset pitää lähettää. Pull-malli on tehokas, kun päivityksiä on paljon suhteessa lukuoperaatioihin. Tällöin jokaisen päivityksen työntäminen jokaiseen pisteeseen aiheuttaisi turhaa tietoliikennettä. Tämä pätee erityisesti silloin, kun tietokantapiste on yksittäisen asiakkaan yksityinen välimuisti.
+
+Osa replikointimenetelmistä vaatii koko tietokannan \textbf{täydellisen replikoimisen} ja osassa voidaan valita replikoitavaksi vain osajoukko datasta. PostgreSQL-tietokannoissa looginen replikointi ja heräteperusteinen replikointi sallivat kopioimisen rajaamisen osajoukkoon tietokannan datasta. Fyysinen eli tapahtumalokeihin perustuva replikointi voidaan tehdä vain koko tietokannalle.
+
+Jokaisessa edellä esitellyssä replikointimenetelmässä on erilainen \textbf{yhteensopivuus} replikoitavien pisteiden tietokantajärjestelmien osalta. WAL-lokeihin perustuva replikointi vaatii täsmälleen samat tietokannanhallintajärjestelmät kaikissa pisteissä eli se soveltuu vain homogeenisiin hajautettuihin tietokantohin. Muut menetelmät soveltuvat tietyin rajauksin myös heterogeeniselle järjestelmille. Lausekeperustaiseen replikointiin riittää, kun pisteet käyttävät täsmälleen samaa kyselykieltä ja kyselyt parsitaan samoiksi operaatioiksi. Loogisessa replikoinnissa tietokantapisteet saattavat käyttää erilaisia kyselykieliä, mutta niillä täytyy samanlainen tietomalli tai kyky tehdä skeemojen välinen muutos osana replikointiprosessia. Herätinperusteinen replikointi on mahdollista hyvinkin erilaisten tietokantapisteiden välillä, sillä replikointilogiikka täytyy toteuttaa itse.
+
+Lisäksi replikointitavat eroavat toisistaan \textbf{toteutuskerrokseltaan}. PostgreSQL-tietokan\-noissa on sisäänrakennettu tuki WAL-lokiin perustuvaan ja loogiseen replikointiin. Ne on siis toteutettu näistä menetelmistä matalimmalla tasolla eli tietokannanhallintajärjestel\-mässä. Herätinperusteisen replikoinnin toteuttaminen on puolestaan lähes täysin sovelluskehittäjän vastuulla. Toteutuskerrokseltaan näiden välille asettuu lausekeperusteinen replikointi, joka on tarjolla PostgreSQL-tietokantoihin kolmannen osapuolen välikerrosohjelmistona.
+
+Seuraavassa taulukossa on esitetty nämä piirteet tiivissä muodossa:
+
+\begin{center}
+\begin{tabular}{ | m{3cm} | m{12cm} | } 
+ \hline
+ \textbf{Piirre} & \textbf{Selite}\\ 
+ \hline
+ Propagoitava asia & Replikointiprotokolla käyttävät pääosin kolmea erilaista tapaa päivitysten propagointiin: datan, operaatioiden tai notifikaatioiden lähettäminen. \\
+ \hline
+ Pull vai push & Palvelimelta selaimeen suuntautuva päivitysten propagointi tehdään joka selaimen aloitteesta pull-mallilla tai palvelimen aloitteesta push-mallilla \\
+ \hline
+ Täysi/Osittainen & Postgresin fyysinen replikointi edellyttää tietokannan kopioimista kokonaisuudessaan. Looginen replikointi mahdollistaa osittaisen replikoinnin joko rajausehdoilla (engl. filter) tai halutut tietueet erityisesti määrittelemällä kyselyillä.\\
+ \hline
+ Yhteensopivuus & Tietokantojen replikointiprotokollat voivat olla hyvin spesifejä tai yleiskäyttöisiä. Sama koskee alla esiteltäviä tekniikoita. Osa niistä on melko matalan tason viestiprotokollia, kun taas PouchDB on tietokanta, jolla on oma protokollansa replikoimiseen.\\
+ \hline
+ Toteutuskerros & Hajautettuja konfiguraatioita tukevat tietokantajärjestelmät hoitavat datan replikoinnin eikä sovelluskehittäjän tarvitse itse huolehtia siitä. Näin toimii esimerkiksi PostgreSQL WAL-lokeihin perustuvaa replikointia käytettäessä. Silloin, kun halutaan tehdä räätälöidympiä ratkaisuja esimerkiksi konfliktien ratkaisua varten, voidaan joutua kirjoittamaan replikointilogiikkaa itse.\\
+ \hline
+\end{tabular}
+%\captionof{table}{Replikointiprotokollien ominaisuuksia}
+%\label{table-replikointi}
+\end{center}
+
+\section{Vertailu SPA-sovelluksiin}
+
+Seuraavaksi vertaillaan SPA-sovellusten käyttämiä selaimen ja palvelimen välisiä kommunikaatioprotokollia edellä esiteltyihin hajautettujen tietokantojen käyttämiin replikointiprotokolliin. Protokollien ominaisuuksia on kerätty taulukkomuotoon ja esiteltäviä selainpuolen tekniikoita vertaillaan taulukon avulla hajauttujen järjestelmien piirteisiin. Näin saadaan muodostettua kuva tekniikoiden eroavaisuuksia ja mahdollisista ominaisuuksista, joiden kohdalla selainpuolella kannattaisi ottaa mallia tietokannoista.
+
+Selaimen ja palvelimen välillä käytettyjen tiedonsiirtoratkaisuja on valittu tähän vertailuun seuraavin perustein. REST ja GraphQL ovat web-sovelluksissa yleisesti käytettyjä tekniikoita. XMLHttpRequest, WebSockets ja WebRTC on poimittu rajaamalla selainten tarjoamien rajapintojen \citep{web-apis} listauksesta tiedonsiirtoon liittyvät rajapinnat. Lisäksi joukkoon on valittu selaimessa toimiva tietokanta PouchDB, joka tarjoaa mahdollisuuden automaattiseen datan synkronoimiseen selaimen ja palvelimen välillä.
+
+\subsection{XMLHttpRequest ja REST-arkkitehtuuri}
+
+XMLHttpRequest (XHR) on selainten tarjoama JavaScript-rajapinta, joka mahdollistaa Ajax-pyynnöt \cite{xhr}. Sen avulla selainsovellus voi siis ladata dataa palvelimelta päivittämättä selaimen sivua. REST taas on laajasti käytetty arkkitehtuurityyli Ajax-pyyntöjen tekemiseen ja se määrittelee yleiskäyttöisen formaatin pyyntöjen tekemiseen. Ajax-pyyntöjen osoitteena käytetään halutun resurssin määrittelevää URI-tunnistetta. Haluttu operaatio ilmaistaan HTTP-standardin mukaisilla metodeilla ja tarvittava data ilmaistaan esimerkiksi json-muodossa.
+
+\begin{center}
+\begin{tabular}{ | m{3.3cm} | m{11.7cm} | }
+ \hline
+ \textbf{Piirre} & \textbf{XHR ja REST}\\ 
+ \hline
+ Propagoitava asia & Selain saa päivitykset palvelimelta GET-pyyntöjen vastauksina \textbf{datana}. Selaimen päivittäessä dataa se lähettää päivityksen POST-, PUT- tai PATCH-pyyntönä ja muuttunut data lähetetään pyynnön runko-osassa usein json-muodossa. \\
+ \hline
+ Pull vai push & REST-mallissa selain saa palvelimella tapahtuneet päivityksen vain itse pyytämällä eli kyseessä on pull-malli.\\
+ \hline
+ Täysi/Osittainen & Http-pyyntöjen avulla replikointi tehdään vain sille datalle, jonka sovelluskehittäjä määrittelee. \\
+ \hline
+ Yhteensopivuus & Yksinkertaisuus ja yhtenäisyys ovat olleet tärkeitä suunnitteluperiaatteista REST-mallia kehittäessä. Protokolla on hyvin yleiskäyttöinen ja laajasti yhteensopiva erilaisiin ympäristöihin.\\
+ \hline
+ Toteutuskerros & Replikointilogiikkan toteuttaminen on täysin sovelluskehittäjän vastuulla. \\
+ \hline
+\end{tabular}
+\end{center}
+
+Eheyden hallintaan liittyvänä erityispiirteenä HTTP-protokolla sisältää myös \textit{ETag} nimisen sisäänrakennetun ominaisuuden optimistisen rinnakkaisuuden hallinnan toteuttamiseksi. Siinä asiakas saa GET-pyynnön yhteydessä eräänlaisen versionumeron eli ETag-tunnisteen. GET-pyyntöä seuraavat PUT- tai PATCH-operaatiot voivat liittää tämän tunnisteen mukaan dataa muokkaavaan operaatioon. Tällöin palvelin voi varmistaa onko muokattava data ehtinyt muuttua tällä välin. Jos dataa ei ole muokattu, operaatio sallitaan. 
+
+Lisäksi HTTP-pyyntöjen etuna ovat selaimien kehittyneet ja vakiintuneet tekniikat välimuistin käyttöön. Eheyden hallinnan kannalta olennaista on mahdollisuus asettaa sallittu käyttöikä HTTP-pyynnön vastaukselle.
+
+\subsection{WebSocket}
+
+WebSocket-protokollassa (cite) selaimen ja palvelimen välillä on jatkuva yhteys. Tämä mahdollistaa viestien lähettämisen palvelimen aloitteesta eli push-mallia käyttäen. Selainsovellus voi siis näyttää reaaliaikaista dataa ilman jatkuvaa päivitysten pyytämistä. Lähetettävien viestin formaatti on täysin vapaa ja ne voidaan lähettää teksti- tai binäärimuotoisena.
+
+\begin{center}
+\begin{tabular}{ | m{3.3cm} | m{11.7cm} | }
+ \hline
+ \textbf{Piirre} & \textbf{WebSocket}\\ 
+ \hline
+ Propagoitava asia & WebSocket ei määrittele viestin formaattia millään tavalla. Viestit voivat olla siis \textbf{dataa} tai \textbf{operaatioita}. Lisäksi myös \textbf{notifikaatiot} voivat olla käytännöllisiä, sillä palvelin voi lähettää viestejä selaimeen. \\
+ \hline
+ Pull vai push & Websocket-protokollan olennainen piirre on {push}-ominaisuus eli mahdollisuus päivitysten propagoimiseen palvelimelta käsin toisin kuin HTTP-pyynnöissä, jotka ovat aina asiakkaan aloittamia. \\
+ \hline
+ Täysi/Osittainen & Osittaista, kuten HTTP-pyynnöissä. \\
+ \hline
+ Yhteensopivuus & HTTP-pyyntöjen tapaan websocket on hyvin \textbf{yleiskäyttöinen} eikä sitä ole erityisesti suunniteltu käytettäväksi jonkin tietyn tietokannan kanssa. Websocket-protokolla ei ota kantaa lähetettävien pyyntöjen sisältöön, joten ilman REST-mallin kaltaista arkkitehtuurimallia websocket-protokollalla tehtävä replikointi on hyvinkin sovellusspesifiä protokolla yleiskäyttöisyydestä huolimatta. \\
+ \hline
+ Toteutuskerros & Replikointilogiikkan toteuttaminen on täysin sovelluskehittäjän vastuulla. \\
+ \hline
+\end{tabular}
+\end{center}
+
+\subsection{GraphQL}
+
+GraphQL (cite) on korkeamman tason protokolla kuin XHR tai WebSocket. Sitä verrataan usein REST-malliin, joka on abstraktiotasoltaan parempi vertailukohta. GraphQL määrittelee kyselykielen ja formaatin, jossa pyyntöjen vastaukset annetaan. REST-mallin tavoin kommunikaatioprotokollana käytetään usein HTTP-pyyntöjä vaikka mallia ei ole siihen sidottu.
+
+\begin{center}
+\begin{tabular}{ | m{3.3cm} | m{11.7cm} | }
+ \hline
+ \textbf{Piirre} & \textbf{GraphQL}\\ 
+ \hline
+ Propagoitava asia & Päivitykset propagoidaan GraphQL-kielisinä \textbf{operaatioina}, jotka esitetään JSON-formaatissa. Datan päivittämiseen GraphQL-kieli ei kuitenkaan tarjoa kovin monipuolisia operaatioita, vaan kyselyt muistuttavat etäkäsittelykutsuja (engl. remote procedure call), sillä annetaan operaation nimi ja parametrit. \\
+ \hline
+ Pull vai push & Yleensä GraphQL-operaatiot ovat \textbf{pull}-tyyppisiä, mutta myös \textbf{push}-operaatiot ovat mahdollisia \textit{subscription}-nimisen operaation avulla. Normaalisti GraphQL-operaatio tehdään HTTP-pyyntöjen avulla mutta push-operaatiot tehdään WebSocket-protokollaa käyttäen. \\
+ \hline
+ Täysi/Osittainen & Osittaista, kuten HTTP-pyynnöissä.\\
+ \hline
+ Yhteensopivuus & GraphQL sopii käytettäväksi useiden erilaisten tietokanta- ja tilanhallintajärjestelmien kanssa. Jos käytetään selaimessa tehtävään tilanhallintaan GraphQL Apollo -kirjastoa, voidaan paikalliseen tilaan kohdistuvat operaatiot tehdä samalla kielellä kuin palvelimelle tehtävät pyynnöt. \\
+ \hline
+ Toteutuskerros & Sovelluskehittäjä ja mahdollisesti osittain tilanhallintajärjestelmä. Jos käytetään tilanhallintaa Redux-kirjastoa ja palvelintietokantana Postgres-tietokantaa, on replikoinnin suorittaminen GraphQL-operaatioina täysin sovelluskehittäjän vastuulla. Käyttämällä Apollo-kirjastoa voidaan ajatella, että replikointi on osittain käytettyjen kirjastojen hoitamaa. Sovelluskehittäjä voi kirjoittaa pyyntöjä välittämättä vastaanko pyyntöön paikallisesta datasta vai haetaanko data palvelimelta. \\
+ \hline
+\end{tabular}
+\end{center}
+
+TODO: graphQL dataa muokkaava pyyntö -esimerkki
+
+\subsection{PouchDB}
+
+Edellisistä poiketen PouchDB (cite) ei ole vain protokolla selaimen ja palvelimen väliseen tiedonvaihtoon vaan kokonainen tietokantajärjestelmä. Se on JavaScript-implementaatio CouchDB-tietokannasta. CouchDB on dokumenttitietokanta ja sen erityispiirteenä on mahdollisuus multi-master -replikointiin. Replikointi tehdään HTTP-protokollaa käyttäen, joten selaimessa toimiva PouchDB voidaan suoraviivaisesti synkronoida palvelimella olevan CouchDB-tietokannan kanssa.
+
+\begin{center}
+\begin{tabular}{ | m{3.3cm} | m{11.7cm} | }
+ \hline
+ \textbf{Piirre} & \textbf{PouchDB}\\ 
+ \hline
+ Propagoitava asia & Palvelimen CouchDB-tietokanta lähettää asiakkailleen \textbf{notifikaation} dataan tulleista muutoksista. Asiakas pyytää halutessaan päivitykset erillisenä pyyntönä.\\
+ \hline
+ Pull vai push & PouchDB mahdollistaa päivitysten propagoimisen palvelimelta selaimeen push-mallilla. Tämä toteutetaan oletuksena HTTP-pyynnöillä \textit{long polling}-tekniikalla, mutta myös WebSocket-implementaatio on olemassa. \citep{pouchdb_polling}\\
+ \hline
+ Täysi/Osittainen & Muista listatuista prokollista poiketen PouchDB replikoi oletuksena kaiken lähdetietokannan datan. Replikoitavaa dataa voidaan kuitenkin rajata haluttuun osajoukkoon. \\
+ \hline
+ Yhteensopivuus & PouchDB käyttää CouchDB:n avointa replikointirajapintaa ja protokollaa. Samaa protokollaa voisi olla mahdollista käyttää muidenkin tietokantojen välillä sopivien välikerrosohjelmistojen avulla, mutta prokolla ei ole samalla tavalla yleiskäyttöiseksi suunniteltu kuin REST tai GraphQL\\
+ \hline
+ Toteutuskerros & Tietokantajärjestelmä. Myös toteutuskerroksen osalta PouchDB on poikkeava tässä joukossa. Replikointi on täysin järjestelmän toteuttamaa eikä sovelluskehittäjän tarvitse itse määritellä replikointiin vaadittavia operaatioita. \\
+ \hline
+\end{tabular}
+\end{center}
+
+\subsection{WebRTC}
+
+Lopuksi mainittakoon vielä WebRTC-protokolla (cite). Se on teknologia, jonka selainten välille voidaan vertaisyhteys (engl. peer-to-peer connection). Se on kehitetty erityisesti ääntä ja kuvaa eli esimerkiksi videopuheluja varten, mutta sitä voidaan käyttää myös muunlaisen datan lähettämiseen ja vastaanottamiseen.
+
+Reaaliaikaviestintätekniikoille pieni latenssi on usein luotettavuutta tärkeämpää, joten ne käyttävät UDP-protokollaa TCP-protokollan sijaan. Epäluotettava UDP sopii kuitenkin huonosti tietokantojen replikoinnin tapaiseen liikenteeseen, sillä viestien hukkaamista ei voida sallia. Tämä ei kuitenkaan ole ongelma WebRTC:n kohdalla, sillä siinä käytetään SCTP-protokollaa, joka voidaan konfiguroita UDP:n tai TCP:n kaltaiseen toimintamalliin tarpeen mukaan.
+
+\begin{center}
+\begin{tabular}{ | m{3.3cm} | m{11.7cm} | }
+ \hline
+ \textbf{Piirre} & \textbf{WebRTC}\\ 
+ \hline
+ Propagoitava asia & WebRTC ei määrittele viestin formaattia millään tavalla. \\
+ \hline
+ Pull vai push & Push\\
+ \hline
+ Täysi/Osittainen & Osittaista, kuten HTTP-pyynnöissä. \\
+ \hline
+ Yhteensopivuus & WebRTC on suhteellisen tuore teknologia eikä se ole vielä saavuttanut W3C Recommendation -tasoa. Se on kuitekin laajasti selainten tukema. Matalan tason protokollana WebRTC ei ole sidottu mihinkään tiettyyn tilanhallintajärjestelmään.\\
+ \hline
+ Toteutuskerros & Replikointilogiikkan toteuttaminen on täysin sovelluskehittäjän vastuulla. \\
+ \hline
+\end{tabular}
+\end{center}
+
+\section{Havaintoja}
+
+Esitellyissä menetelmissä oli käytettiin replikointiin sekä datan että notifikaatioiden lähet\-tämistä. Lisäksi GraphQL:n voidaan katsoa lähettävän operaatioita, mutta ne muistuttavat kenties enemmän funktiokutsuja kuin varsinaisia datan päivittämiseen käytettyjä lauseita. Luvussa \ref{sec-statement-based-replication} esitellyssä lausekeperusteisessa replikoissa käytetään samoja SQL-lauseita datan päivittämiseen ja päivitysten propagointiin. Tämä voisi olla mielenkiintoinen lähetysmistapa myös SPA-sovelluksiin.
+
+Hajautetuissa tietokannoissa päivitykset propagoidaan yleensä push-mallilla. SPA-sovelluksissa pull-malli on oletusarvoinen, mutta push-malli kuitenkin mahdollinen. Tietokannoissa käytettyjen ratkaisujen valossa näyttäisi siltä, että myös SPA-sovelluksissa kannattaisi pyrkiä käyttä\-mään push-mallia.
+
+Käsittelyissä tekniikoissa oli mukana sekä laajasti yhteensopivia yleiskäyttöisiä tekniikoita, kuten XHR-pyynnöt REST-arkkitehtuuri sekä spesifejä ratkaisuja, kuten PouchDB. Samoin hajauttujen tietokantojen piirissä on myös molempia lähestymistapoja käytössä. Jos verrataan omilla alueilla erittäin suosittuja REST-rajapintoja ja PostgreSQL-tietokantoja niin saadaan jonkinlaista eroavaisuutta esille. Selainpuolen replikointityyppinen tiedonsiirto hoidetaan usein yleiskäyttöisellä, mutta runsaasti ohjelmointia vaativalla HTTP-protokollalla ja palvelinpuolella PostgreSQL käyttää oletuksena ei-yleiskäyttöistä, mutta automaattista WAL-lokeihin perustuvaa menetelmää. Tätä voinee käyttää argumenttina ei-yleiskäyttöisten menetelmien käyttämiseen jossain tilanteissa myös selainpuolella.
+
+Selkeä eroavaisuus selain- ja palvelinpuolen välillä on replikonnin toteutuskerroksessa. Useimmissa käsitellyistä selainpuolen tekniikoissa varsinainen replikointilogiikan toteuttaminen jää täysin sovelluskehittäjän vastuulle. Palvelinpuolella tilanne on päinvastainen ja käytetyimmät replikointimenetelmät ovat tietokantajärjestelmän avulla automatisoituja. PouchDB:ssä synkronointi on automaattista, mutta se ei kuitenkaan ole kovin laajasti käytössä. Tämän on sanottu johtuvan muun muassa ongelmista konfliktien ratkaisussa ja kyselyissä käytettävästä monille vieraasta MapReduce-mallista \citep{local-first}. PouchDB:n filosofia on kuitenkin saanut kiitosta \citep{local-first} ja automaattinen replikointi on todettu toimivaksi palvelinpuolen tietokannoissa. Näillä perustein PouchDB:n kaltainen automaattisesti replikoiva tietokanta voisi olla tietyin muutoksin todella käyttökelpoinen SPA-sovellusten tilanhallintaan.
+
+Lisäksi selainten menetelmät replikointiin eroavat tietokantojen vastaavista siten, että ne eivät mahdollista replikoinnin keskeyttämistä ja jatkamista, kuten transaktiolokien lähetys -menetelmässä. Hajautetun tietokannan pisteiden välisen verkkoyhteyden katketessa transaktiolokien lähetys joudutaan keskeyttämään kunnes yhteys palaa. Tämä ei kuitenkaan estä uusien transaktioiden suorittamista, mikäli käytetään asynkronista replikointia. Verkkokatkoksen aikana transaktiolokit tallennetaan normaaliin tapaan ja niiden lähettämistä muihin pisteisiin jatketaan verkkoyhteyden palattua. Myös SPA-sovelluksissa vastaava olisi mahdollista esimerkiksi tallentamalla jonkinlaista transaktiolokia paikalliseen IndexedDB-tietokantaan ja toteuttamalla replikoinnin näitä lokeja lähettämällä.
+
+\chapter{Eheyden hallinta}
+\label{sec-eheydenhallinta-teoria}
+
+Eheyden hallinta on yksi tietokantojen olennaisista ominaisuuksista ja aihetta on tutkittu ja kehitetty jo vuosikymmeniä. Se koskee niin keskitettyjä kuin hajautettuja järjestelmiä. Monimutkaistuvat web-sovellukset sisältävät jatkuvasti enemmän dataa selaimessa ja sen hallitseminen muistuttaa tietokannan operoimista. WebSQL ja IndexedDB ovat kirjaimellisesti selaimessa toimivia tietokantoja. Tässä luvussa käydään läpi eheyden hallintaan liittyviä käsitteitä ja arvioidaan niitä SPA-sovellusten kontekstissa. Tavoitteena on rakentaa ymmärrystä siitä, mitkä näistä aiheista tulisi huomioida SPA-sovelluksia kehitettäessä. Lisäksi pyritään löytämään seikkoja, joissa SPA-sovelluksiin voisi ottaa mallia tietokantojen ominaisuuksista. Tarkastelussa oletetaan lähtökohtaisesti SPA-sovellus, joissa käyttöliittymä on toteutettu React-kirjastolla, sovelluksen paikallisen tilan hallintaan käytetään Redux-kirjastoa, kommunikaatio palvelimelle tapahtuu REST-rajapinnan kautta ja palvelinpuolella on yksinkertainen web-palvelin sekä relaatiotietokanta.
+
+\section{ACID}
+\label{sec-acid}
+
+Akronyymi ACID \citep{acid} on tietokantatransaktioita \citep{gray-1981} määrittelevä kulmakivi. Sen mukaan tietokantatransaktioiden tulee olla atomisia, eheitä, pysyviä ja eristettyjä. ACID vaatimukset koskevat niin yksittäisen palvelimen tietokantaa kuin hajautettuja tietokantoja. SPA-sovellusten kohdalla voidaan siis tarkastella miten vaatimukset toteutuvat paikallisen tilan ja palvelimelle tapahtuvien pyyntöjen kohdalla. 
+
+\subsection{Atomisuus}
+
+Atomisuusvaatimus tarkoittaa, että transaktio täytyy suorittaa kokonaisuudessaan tai ei ollenkaan. Keskeneräiseksi jäävä operaatio jättäisi tietokannan epäeheään tilaan.
+
+Redux-storeen tapahtuvat tilan muutokset ovat aina atomisia, sillä muutokset toteutetaan immutable-tietorakenteeseen eli päivitettävää osaa sovelluksen tilasta ei muokata suoraan vaan siitä tehdään uusi kopio \citep{redux-principles}. Kun tarvittavat päivitykset on tehty, muokkaukset tehnyt reducer-funktio palauttaa uuden version tilasta ja se asetaan aktiiviseksi.
+
+XHR-pyyntöjen ja REST-rajapinnan kohdalla atomisuus on monimutkaisempi vaatimus. Yksittäisen, yhteen tietoalkioon kohdistuvan XHR-pyynnön kohdalla atomisuus toteutuu helposti mikäli palvelin tekee saapuvasta HTTP-pyynnöstä yhden atomisen tietokantatransaktion. Atomisuuden säilyttäminen vaatii enemmän tarkkuutta, jos operaatio kohdistuu useisiin tietueisiin. Seuraava esimerkki havainnollistaa asiaa.
+
+Yhteen tietueeseen kohdistuva operaation URI-tunniste näyttää tältä:
+
+\begin{Verbatim}[fontsize=\small]
+PATCH http://example.com/api/item/123/comment/1
+{ text: "lorem ipsum" }
+\end{Verbatim}
+
+Useampaa tietuetta on mahdollista päivittää tekemällä kullekin oma edellisen kaltainen HTTP-pyyntö, mutta erillisten pyyntöjen atomista toteutumista ei voida taata. Tämän sijaan operaatiot tulisi paketoida yhteen HTTP-pyyntöön. RFC 6902 \citep{rfc6902} määrittelee JSON PATCH notaation, joka soveltuu useiden objektien käsittelyyn. Seuraava esimerkki muokkaa kommenttien 1 ja 2 tekstejä.
+
+\begin{Verbatim}[fontsize=\small]
+PATCH http://example.com/api/item/123/comment/
+[{ 
+    op: "replace",
+    path: "/1/text",
+    value: "ipsum"
+ }, {
+    op: "replace",
+    path: "/2/text",
+    value: "lorem"
+}]
+\end{Verbatim}
+
+\subsection{Eheys}
+
+Relaatiotietokannoissa tietokantajärjestelmä varmistaa, että tietokantaan luonut eheysrajoitteet pysyvät voimassa transaktion sitoutuessa. Tämä koskee muun muassa sarakkeiden tietotyyppejä, vieras- ja pääavainrajoitteita sekä uniikkius ja arvojoukkorajoitteita. ACID-akronyymissä eheys viittaa tähän transaktioiden oikeellisuus-vaatimukseen (engl. correctness) eli transaktio muuttaa tietokannan tilaa eheästä tilasta toiseen eheään tilaan.
+
+Redux-kirjaston kohdalla operaatioiden oikeellisuuden varmistaminen on sovelluskehittäjän vastuulla. Redux ei itsessään tarjoa mahdollisuutta relaatiotietokantojen kaltaisten eheysrajoitteiden asettamiseen. Myöskään aiheeseen liittyviä kirjastoja ei ole listattu ainakaan Redux-dokumentaation Ecosystem-osiossa eikä niitä löydy npm-palvelusta hakusanoilla ``redux integrity constraints'' tai ``redux consistency''. Tässä kohtaa SPA-sovelluksiin voisi siis ottaa mahdollisesti mallia relaatiotietokannoista. Erityisesti offline-tilassa tehtäviä päivityksiä mahdollistavat sovellukset voisivat hyötyä eheyden varmistamisesta jo selaimessa.
+
+\subsection{Pysyvyys}
+
+Jotta transaktion vaikutus olisi pysyvä myös sovelluksen kaatuessa tai muussa ongelmatilanteessa, on tieto transaktiosta persistoitava transaktion aikana. Relaatiotietokannoissa tämä toteutetaan transaktiolokien avulla.
+
+Kaaviossa \ref{fig-redux-seq-1} esitetyn kaltaisessa yksinkertaisessa SPA-sovelluksen arkkitehtuurissa kaikki persistointi tapahtuu tietokantapalvelimen avulla. Operaatiot lähetetään HTTP-pyyntönä sovelluspalvelimelle, joka huolehtii niiden tallentamisesta tietokantaan.
+
+SPA-sovelluksissa operaatioita on kuitenkin mahdollista persistoida myös paikallisesti käyttäjän laitteelle selainten tarjoamien rajapintojen, kuten localstoragen, avulla. Reduxin kanssa näitä rajapintoja voidaan käyttää erilaisten kirjastojen avulla. Redux dokumentaation Ecosystem-sivulla \citep{redux-ecosystem} on listattu kirjastot redux-persist, redux-storage ja redux-offline. Ne mahdollistavat useiden paikallisten tallennusmekanismien (engl. storage engine) käytön Reduxin yhteydessä. 
+
+Redux-tilaa paikallisesti persistoivien kirjastojen ja transaktiolokien käytön välillä on kuitenkin selkeä ero. Reduxin sisältämä tila persistoidaan kokonaisuudessaan jokaisen operaation yhteydessä tai ajoittain, mutta relaatiotietokannat tallentavat ainoastaan minimaalisen lokitietueen transaktion aikana. Transaktiolokien tallentaminen on tehokasta, mutta tietokannan kaatuessa lokimenetelmä vaatii tietokannan tilan rakentamisen uudelleen operaatio kerrallaan. Redux-kirjastojen tapa tallentaa koko tilaobjekti on yksinkertainen, mutta se voi muodostua pullonkaulaksi.
+
+\subsection{Eristyvyys}
+
+Eristyvyys tarkoittaa sitä, että transaktioiden rinnakkainen suorittaminen ei vaikuta niiden lopputulokseen. Tuloksen on siis oltava sama kuin, jos transaktiot olisi suoritettu peräkkäisjärjestyksessä. Relaatiotietokannoissa eristyvyysanomaliat ovat mahdollisia mikäli transaktiot muokkaavat dataa paikallaan eivätkä käytä riittäviä lukitusmenetelmiä.
+
+Web-selaimessa tapahtuvat operaatiot ovat luonnostaan toisistaan eristyneitä, sillä JavaScriptia suoritetaan yksisäikeisesti \citep{JSdefguide}. Kaikki redux-storen tilaan tapahtuvat muutokset tapahtuvat tarkassa järjestyksessä yksi kerrallaan \cite{redux-principles}.
+
+Optimistisia päivityksiä käytettäessä on kuitenkin mahdollisuus esimerkiksi likaiseksi lukemiseksi kutsuttuun anomaliaan. Tästä ja muista eristyvyysanomalioista tarkemmin seuraavaksi.
+
+\section{SQL eristyvyystasot ja anomaliat}
+
+ACID-akronyymin vaatimus transaktioiden täydellisestä eristyvyydestä on raskas ja sitä keventämään on kehitetty löyhempiä eristyvyystasoja. SQL-standardissa \cite{iso-sql-92, gray-ansi} määritellyt transaktioiden eristyvyystasot mahdollistavat asteittaisen eristyvyyden relaksoinnin niin, että vain hallittu joukko eristyvyysanomalioita on mahdollisia. Standardissa määritellään kolme anomaliaa: likainen lukeminen, toistokelvoton luku sekä haamuilmiö.
+
+\subsection{Likainen lukeminen}
+
+Tämä anomalia tapahtuu, kun kaksi yhtäaikaista operaatiota käsittelee samaa dataa. Transaktio A muokkaa dataa, mutta ei vielä sitouta muutos commit-käskyllä. Ilman rinnakkaisuuden hallintaa toinen transaktio B voi lukea tämän sitouttamattoman muutoksen. Jos transaktio A peruuntuu niin transaktio B on lukenut virheellistä dataa.
+
+Reduxin yhteydessä vastaavaa ei pääse tapahtumaan, sillä operaatioita ei erikseen sitouteta eikä keskeneräisiä muutoksia ole luettavissa immutable-tietorakenteen ansiosta. SPA-malli mahdollistaa kuitenkin myös optimistiset päivitykset (engl. optimistic update) paikalliseen tilaan. Tämä tarkoittaa redux-storen tilan päivittämistä jo ennen kuin siihen liittyvä http-pyyntöön on vastattu. Tällöin seuraavanlainen skenario johtaisi likaisen lukemisen anomaliaan:
+
+\begin{Verbatim}[fontsize=\small]
+- Operaatio A tekee optimistisen päivityksen paikalliseen dataan 
+  ja lähettää pyynnön palvelimelle.
+- Operaatio B lukee tämän optimistisesti tehdyn päivityksen osana laajempaa
+  yhteenvetokyselyä. Tämän kyselyn tulos tallennetaan palvelimelle. 
+- Palvelin hylkää operaation A pyynnön ja optimistinen päivitys peruutetaan.
+- Operaatio B on tallentanut virheellisen raportin.
+\end{Verbatim}
+
+Tämän esimerkin tilanne voidaan välttää tekemällä yhteenvetokyselyt palvelimella ja sellaisen tekeminen selaimessa onkin kenties epätavallista. Esimerkki kuitenkin näyttää, että optimististen päivitysten yhteydessä on oltava tarkkaavainen paikallisen datan kanssa, sillä se voi sisältää sitoutumatonta dataa.
+
+\subsection{Toistokelvoton luku ja haamuilmiö}
+
+Toistokelvoton luku koskee etenkin operaatioita, jotka lukevat paljon dataa ja ovat näin pitkäkestoisia. Tällöin toinen operaatio voi ehtiä tekemään päivityksen luettuun dataan, ennen kuin ensimmäinen operaatio on päättynyt. Jos ensimmäinen operaatio toistettaisi juuri ennen sen päättymistä, lopputulos olisi erilainen.
+
+Reduxin kontekstissa tämä anomalia ei pääse esiintymään, sillä selain suorittaa JavaScript-koodia yksisäikeisesti ja synkronisesti, joten operaatiot eivät tapahdu rinnakkain. Anomalia koskee kuitenkin jossain määrin myös SPA-sovelluksia silloin, kun haetaan dataa palvelimelta. Tietokanta voi tarjota eristyvyystason, joka estää toistokelvottomat luvut transaktioille. Vastaavankaltainen anomalia on kuitenkin mahdollinen mikäli selaimen paikallinen tila koostetaan useiden HTTP-pyyntöjen ja tietokantatransaktioiden avulla. Tällöin koostettu paikallinen tila ei välttämättä kuvaa mitään eheää tietokannan tilannevedosta (engl. snapshot), kun pyyntöjen välissä tietokannan data voi päivittyä muiden käyttäjien operaatioiden johdosta. Mikäli selaimeen halutaan eheä tilannevedos, on käytettävät REST-rajapinnoille tyypillisten entiteettikohtaisten kyselyjen sijaan räätälöidympiä ratkaisuja.
+
+Haamuilmiö on erikoistapaus toistokelvottomasta lukemisesta, jossa toinen transaktio lisää tai poistaa rivejä niiden päivittämisen sijaan. Toistokelvottomasta lukemista esitetyt SPA-kontekstia koskevat havainnot pätevät myös haamuilmiön kohdalla.
+
+\subsection{Kadonnut päivitys}
+
+Tämä anomalia eroaa edellisistä merkittävästi, sillä kyseessä on kirjoittamiseen liittyvä anomalia siinä missä edelliset liittyivät luku-operaatioita tekevien transaktioiden kohtaamiin anomaliohin.
+
+Kadonnut päivytys on mahdollinen, kun kaksi yhtäaikaista transaktiota päivittää samaa dataa. Redux kontekstissa tätä ei kuitenkaan pääse tapahtumaan rinnaisuuden puuttumisen ansiosta. Myöskään HTTP-pyyntöjen asynkronisuus ei aiheuta tätä anomaliaa, sillä palvelimella oleva relaatiotietokanta oletusarvoiseti estää päällekäiset päivitykset.
+
+Kadonneen päivityksen kaltainen anomalia on kuitenkin mahdollinen useiden käyttäjien käsitellessä samaa dataa lähes samaan aikaan. Päivitysoperaatiot, jotka asettavat tietueelle tietyn arvon, saattavat erehdyksessä ylikirjoittaa muiden tekemiä päivityksiä mikäli riittäviä varokeinoja ei käytetä. Kuvassa \ref{fig-lostupdate} kaksi käyttäjää tarkastelee huonevarauksia samanaikaisesti. Molemmat näkevät huoneen 105 vapaana haluamanaan päivänä ja tekevät siihen varauksen. Käyttäjän 2 tekemä varaus jää voimaan, sillä järjestelmä ei tässä esimerkissä varmista, että onko varausta jo olemassa. Käyttäjän 1 tekemä varaus on näin kadonnut päivitys.
+
+\begin{figure}[ht]
+  \centering
+    \includegraphics[width=0.9\textwidth]{img/lost_update.png}
+  \caption{Kadonnut päivitys -anomalia}
+  \label{fig-lostupdate}
+\end{figure}
+
+HTTP-protokollaan kuuluvat ETag-tunnisteet mahdollistavat tämän anomalian välttämiseen. Niiden avulla palvelin tunnistaa selaimelta saapuvasta päivitysoperaatiosta, että onko selaimella ollut tuorein versio datasta jota se on päivittämässä. Jos näin ei ole, pyyntö voidaan hylätä ja estää mahdollinen ylikirjoitus.
+
+\section{Hajautettujen tietokantojen eheysmallit}
+
+Hajautetuissa tietokannoissa eristyvyyden ja atomisuuden turvaaminen vaatii vielä enemmän koordinaatiota kuin yhden pisteen tietokannoissa. Runsas koordinointi kuitenkin heikentää tietokantajärjestelmän suorituskykyä ja saatavuutta. Eric Brewer esitteli vuonna 2000 CAP-teoreeman, joka teki tunnetuksi hajauttuihin tietokantohin liittyvän dilemman: järjestelmän on valittava eheyden ja saatavuuden väliltä, sillä molempia ei voida saavuttaa hajautetussa ympäristössä. 
+
+Valinta eheyden ja saatavuuden välillä ei kuitenkaan ole mustavalkoinen vaan on olemassa joukko eri tasoisia eheysmalleja, joita voidaan soveltaa hajautetuissa tietokannoissa. Nämät mallit muistuttavat jossain määrin edellä käsiteltyjä eristyvyystasoja, mutta ne eivät suoranaisesti liity toisiinsa. Eristyvyystasot koskevat transaktioiden rinnakkaista suorittamista. Hajautettujen tietokantojen eheysmallit liittyvät tietokannan pisteiden välisen eheyden hallintaan tietoliikenteen viiveistä ja häiriöistä huolimatta. Seuraavaksi esitellään viisi erilaista eheysmallia ja arvioidaan niiden soveltuvuutta SPA-sovellusten kontekstiin.
+
+\subsection{Ehdoton eheys}
+
+Tämän joukon tiukoin eheysmalli on nimeltään ehdoton eheys (engl. strict consistency). Tässä mallissa kaikkien päivitysten tulee olla kaikkien prosessien luettavissa välittömästi reaaliajassa. Hajautetuissa ympäristöissä tämä ei ole kuitenkaan saavutettavissa viestinvälityksen aiheuttaman viiveen takia. Tämä toimii hajautettujen järjestelmien kohdalla enemmänkin lähtökohtana, josta lähdetään väljentämään ehtoja, kunnes löydetään sopivan tasoinen malli.
+
+\subsection{Linearisoituvuus}
+
+Linearisoituvuudessa (engl. linearizability) ei vaadita operaatioiden välitöntä näkyvyyttä jokaiselle prosessille. Jokaisen prosessin on kuitenkin havaittava operaatiot samassa järjestyksessä. Dataan tehdyt luku- ja kirjoitusoperaatiot muodostavat siis jäljen (engl. trace), joka määrittelee järjestyksen, jossa operaatiot ovat tapahtuneet. Tämän yhden kokonaisjärjestyksen (engl. single total order) tulee esittää kunkin prosessien suorittamat operaatiot niiden alkuperäisessä todellisessa järjestyksessä. Lisäksi eri prosessien operaatiot täytyy esittää niiden aikaleimojen mukaisessa järjestyksessä.
+
+SPA-sovelluksissa voidaan muodostaa operaatioista keskitetyn tietokannan avulla kokonaisjärjestys, joka huomioi myös reaaliajan. Reaaliaikana joudutaan tosin käyttämään luultavasti selainsovelluksen luomien aikaleimojen sijaan pyyntöjen saapumisaikoja palvelimelle. 
+
+\subsection{Peräkkäiseheys}
+
+Kun linearisoituvuudesta jätetään pois aikaleimojen mukaisesta järjestyksestä eri prosessien operaatioille saadaan peräkkäiseheys (engl. sequential consistency). Yksittäisten prosessien tekemien operaatioiden järjestystä on edelleen noudatettava ja operaatiosta on muodostettava yksi kokonaisjärjestys, jonka mukaisesti kaikkien prosessien tulee havaita kirjoitusoperaatiot.
+
+SPA-sovelluksissa tietokanta muodostaa jaetun kokonaisjärjestyksen. Jos kukin prosessi eli selainsovellus lähettää omat päivitysoperaationsa järjestyksessä ja yksi kerrallaan, tietokantaan muodostuu peräkkäiseheyden mukainen järjestys operaatioista. Peräkkäiseheys ei täyty, jos jokin selaimen lähettämistä operaatioista epäonnistuu ja operaatiot suoritetaan tietokantaan väärässä järjestyksessä.
+
+Vaikka tietokantaan saadaan muodostettua jaettu kokonaisjärjestys voidaan SPA-sovelluksissa kuitenkin rikkoa peräkkäisjärjestyksestä melko helposti. Oleellinen osa on vaatimus kirjoitusoperaatioiden havaitsemisesta oikeassa järjestyksessä. Kuvitellaan, että käyttäjä Alice avaa SPA-sovelluksen klo 14.00 ja selaimeen on ladataan sovelluksen tila tietokannasta. Alice selailee sovellusta hetken ja tekee klo 14:05 jonkin dataa kirjoittavan operaation. Operaatio lähetetään palvelimelle, joka tallentaa tiedon tietokantaan ja vastaa operaation onnistuneen. Nyt selain toteuttaa päivityksen myös paikalliseen tilaansa. Nyt muiden käyttäjien klo 14.00-14.05 välillä tekemiä päivityksiä ei ladattu Alicen selaimeen. Alice näkee siis oman päivityksensä ennen tuolla välillä tehtyjä päivityksiä.
+
+\subsection{Kausaalinen eheys}
+
+Kausaalisessa eheydessä (engl. causal consistency) toisistaan riippuvat kirjoitusoperaatiot tulee esittää oikeassa järjestyksessä. Operaation katsotaan riippuvan toisesta mikäli jälkimmäinen on nähnyt ensimmäisen operaation tuloksen. Näin yhden prosessin operaatiot ovat toisistaan riippuvia eli edellisten mallien tapaan yhden prosessin operaatiot on esitettävä todellisessa järjestyksessä. Peräkkäisjärjestyksestä poiketen kausaalisen eheyden mallissa operaatioista ei tarvitse muodostaa yhtä kokonaisjärjestystä vaan riittää kun kausaalisesti riippuvat operaatiot esitetään todellisessa järjestyksessään.
+
+SPA-sovellukset toteuttavat kausaalisen eheyden luonnostaan sillä yhteinen tietokanta muodostaa operaatioista yhden järjestyksen, jonka mukaan selainsovellukset voivat havaita operaatiot.  Kausaalinen eheys toteuttuu edellisessä esimerkissä, jossa Alice avaa sovelluksen klo 14.00, vaikka peräkkäinen eheys ei toteudukaan. Kausaalinen eheys on kuitenkin mahdollista rikkoa mikäli selainsovellus lataa itselleen vain osan päivityksistä. Seuraavassa esimerkissä \ref{fig-kausaalinen-rest} käsitellään huonevarausjärjestelmässä tapahtuvaa kausaalisen eheyden rikkoutumista. Esimerkissä operaatio P2 on kausaalisesti riippuva operaatiosta P1. Käyttäjä 1 päivittää osaa paikallisesta tilastaan ja saa vain operaation P2 tekemän päivityksen, sillä operaatiot P1 ja P2 kohdistuivat eri tauluihin tietokannassa. Kausaalinen eheys ei siis toteudu.
+
+\vspace{3mm}
+\begin{figure}[ht]
+\begin{minipage}{.45\textwidth}
+  \begin{Verbatim}[fontsize=\scriptsize]
+L1: Käyttäjä 1 avaa sovelluksen ja lataa sovelluksen
+    sen hetkisen tilan kahdella pyynnöllä:
+      GET /rooms
+      GET /reservations?date=2020-02-02
+    Hän näkee vapaana vain huoneen 101.
+P1: Käyttäjä 3 poistaa huoneen 105 käytöstä:
+      PATCH /rooms?room_id=105
+      { disabled: true }
+N1: Käyttäjä 2 saa notifikaation, sillä
+    hänelle oli varaus huoneeseen 105.
+P2: Käyttäjä 2 poistaa varauksensa.
+    Tämä operaatio on kausaalisesti riippuva
+    operaatiosta P1
+L2: Käyttäjä päivittää vielä huonevarausdatan
+    pyynnöllä:
+      GET /reservations?date=2020-02-02.
+    Nyt hän näkee huoneet 101 ja 105 vapaana.
+P3: Käyttäjä 1 yrittää varata huoneen 105,
+    mutta operaatio epäonnistuu
+\end{Verbatim}
+\end{minipage}%
+\begin{minipage}{.55\textwidth}
+  \begin{center}
+    \includegraphics[width=1.0\textwidth]{img/kausaalinen_rikki.png}
+  \end{center}
+\end{minipage}%
+\caption{Kausaalisen eheyden rikkoutuminen REST-rajapinnan kanssa}
+\label{fig-kausaalinen-rest}
+\end{figure}
+
+Kausaalinen eheys voi rikkoutua myös selainsovellusten kommunikoidessa suoraan keskenään esimerkiksi WebRTC-yhteyden kautta. Esimerkki \ref{fig-kausaalinen-webrtc} havainnollistaa mitä tarkoittaa operaatioiden kausaalinen riippuvuus. Alice, Billy ja Chloe keskustelevat viestisovelluksella, joka lähettää viestit p2p-periaattella suoraan laitteesta toiseen.
+
+\vspace{3mm}
+
+\begin{figure}[ht]
+\begin{minipage}{0.5\textwidth}
+  \begin{Verbatim}[fontsize=\footnotesize]
+  Alicen näkymä:
+  
+  <Alice> Avaimeni ovat kadonneet!
+  <Alice> Väärä hälytys, ne löytyikin jo
+  <Billy> Hienoa!
+  <Chloe> Billy olet törkeä!
+  \end{Verbatim}
+\end{minipage}%
+\begin{minipage}{0.5\textwidth}
+\begin{Verbatim}[fontsize=\footnotesize]
+  Chloen näkymä:
+  
+  <Alice> Avaimeni ovat kadonneet!
+  <Billy> Hienoa!
+  <Chloe> Billy olet törkeä!
+
+\end{Verbatim}
+\end{minipage}
+\caption{Kausaalisen eheyden rikkoutuminen WebRTC-yhteyden kanssa}
+\label{fig-kausaalinen-webrtc}
+\end{figure}
+
+Chloen kommetti vaikuttaa oudosta, mutta se selittyy tapahtuneella kausaalisen eheyden rikkoneella anomalialla. Alicen ja Chloen laitteiden välinen yhteys katkesi heti Alicen ensimmäisen viestin jälkeen. Bob kuitekin sai Alicen molemmat viestit ja kommentoi helpottuneena. Chloelle kuitenkin näytti siltä, että Bob ilahtui avainten katoamisesta, sillä hän ei nähnyt Alicen jälkimmäistä viestiä.
+
+\subsection{Jonoeheys}
+
+Jonoeheydeksi (engl. FIFO consistency) kutsutussa mallissa kunkin prosessin kirjoitusoperaatiot näytettävä oikeassa järjestyksessä. Malli ei ota kantaa eri prosesseissa tapahtuneiden operaatioiden väliseen järjestykseen. SPA-sovelluksissa jonoeheys toteutuu luonnostaan mikäli selainsovellus lähettää omat päivityksensä palvelimelle yksi kerrallaan tai yhteen pyyntöön paketoituna. Huolimattomalla ohjelmoinnilla SPA-sovellus voi kuitenkin rikkoa myös jonoeheyttä. Jos selainsovellus lähettää useita päivityksiä palvelimelle peräkkäin, mutta vastauksia odottamatta, ei päivitysten järjestys ole taattu. HTTP pipelining tekniikalla useita XHR-pyyntöjä voidaan suorittaa FIFO-jonon kautta, mutta se ei ole oletuksena käytössä selaimissa \ref{http-pipelining}.
+
+\section{Kirjoitusoperaatioden konfliktit}
+
+Lievemmät eheysmallit johtavat konfliktien mahdollisuuteen, kun kaksi pistettä päivittää samaa dataa yhtäaikaa. Järjestelmän on kyettävä päättämään kumpi päivityksistä jää voimaan tai millä muulla keinolla konflikti voidaan ratkaista. Tätä prosessia kutsutaan nimellä konfliktien ratkaiseminen (engl. conflict resolution) ja siihen on olemassa lukuisia menetelmiä. Menetelmistä voidaan erottaa ainakin neljä kategoriaa: konfliktien välttäminen, voittavan arvon valinta, manuaalinen yhdistäminen ja automaattinen yhdistäminen \citep{Kleppmann}.
+
+Yksinkertainen tapa ratkaista konfliktit on estää niiden syntyminen. Jos tietueen muokkaaminen on mahdollista vain yhdessä tietokantapisteessä, konflikteja ei pääse syntymään. Tämä voidaan toteuttaa esimerkiksi Tanenbaumin \citep{Tanenbaum} esittelemällä local-write primary-backup menetelmän tapaan. Siinä dataa päivittävä tietokantapiste pyytää tietyn datan kirjoitusoikeuden itselleen ennen päivitysoperaatiota. Operaation jälkeen muutokset propagoidaan muille pisteille ja datan kirjoitusoikeudet palautetaan normaaliksi.
+
+Toinen yksinkertainen tapa konfliktien ratkaisuun on jonkinlainen keino valita voimaan jäävä arvo. Kleppmann \cite{Kleppmann} listaa seuraavia esimerkkejä keinoista: korkein aikaleima voittaa (engl. last-write-wins), satunnainen valinta, aakkosjärjestys, prosessien prioriteettijärjestys. Näissä kuitenkin on ongelmana datan häviäminen, sillä toinen arvoista ei jää talteen.
+
+Kehittyneemmissä ratkaisuissa dataa ei häviä vaikka konflikteja pääsisi syntymään. CouchDB \citep{couchdb} käyttää mallia, jossa konfliktitilanteessa molemmat arvot tallennetaan ja seuraavan kerran dataa luettaessa molemmat arvot palautetaan sovellukselle. Sovelluksesta voidaan pyytää käyttäjää valitsemaan voimaan jäävä arvo tai muu tapa ratkaista konflikti tai se voidaan ratkaista automaattisesti sovelluslogiikan avulla.
+
+Konflikti voidaan ratkaistaan myös heti sen tapahtuessa automaattisilla tekniikoilla. Kleppmann \citep{Kleppmann} mainitsee seuraavat menetelmät: operational transform, mergeable persistent data structures ja conflict-free replicated datatypes (CRDT). Näiden menetelmien kohdalla tutkimus on osin melko tuoretta ja käytännön implementaatiot eivät ole vielä vakiinnuttaneet paikkaansa osa hajautettuja tietokantoja.
+
+SPA-sovelluksien kannalta mielenkiintoisia tekniikoita ovat ainakin kirjoitusoikeuksien jakaminen sekä CRDT:t. Kirjoitusoikeuksien jakamisen implementaatiossa on kuitenkin syytä olla huolellinen, sillä lukitusmenetelmiä käytettäessä on mahdollisuus lukkiumatilanteisiin (engl. deadlock). Kenties lukitukset olisi syytä tehdä jonkin kirjaston avulla eikä osana sovelluslogiikkaa. CRDT-tietorakenteista on olemassa lupaava JavaScript-implementaatio nimeltä Automerge \cite{automerge}. Tämä mahdollistaa näiden tietorakenteiden hyö\-dyntämisen SPA-sovelluksissa. Tutkielman kirjoittamisen aikana AutoMergen kehitys vaikuttaa aktiiviselta, joten se vaikuttaa tekniikalta, jota kannattaa pitää silmällä.
+
+\chapter{Pohdinta ja johtopäätökset}
+
+\section{Tulosten analysointi}
+
+Tutkielmassa perehdyttiin SPA-sovelluksiin, joista on tullut todella suosittu tapa rakentaa verkkosivuja. SPA-sovelluksissa usein käytettävää React-kirjastoa ladataan miljoonia kertoja viikossa npm-palvelusta. SPA-mallissa myötä selaimessa säilytetään sovelluksen tilaa tietokantamaisessa muodossa. Varsinkin yksinkertaisissa sovelluksissa sovelluspalvelimen tehtäväksi jää lähinnä siirtää dataa tietokannan ja selaimen välillä. Asetelma muistuttaa hajautettua tietokantaa.
+
+Tutkielmassa vertailtiin hajauttujen tietokantoja määritelmiä ja motivaattoreita SPA-sovelluksiin ja todettiin SPA-sovelluksista löytyvän niitä piirteitä, joilla määritellään hajauttu tietokanta. Myös osa motivaattoreista päti SPA-sovellusten kohdalla. Hajautettujen tietokantojen motivaattoreita ja arkkitehtuureja tarkastelemalla todettiin, että SPA-sovellus muistuttaa replikoitua multi-master -tietokantaa. Tämä vastaa johdannossa esitettyyn ensimmäiseen tutkimuskysymykseen.
+
+Kun vertailu tarkennettiin tietyntyyppisiin tietokantoihin, päästiin keskittymään tarkempaan vertailuun, jossa käsiteltiin replikointimenetelmiä sekä hajautetun datan eheydenhallintaa. Ensimmäiseksi käytiin läpi replikoitujen tietokantojen käyttämiä tekniikoita datan replikointiin. Näistä poimittiin mielenkiintoisia piirteitä ja muodostettiin näin malli, jota käyttäen arvioitiin web-sovellusten käyttämiä tapoja siirtää dataa selaimen ja palvelimen välillä. Eri ympäristöjen menetelmien välillä havaittiin muutamia selkeitä eroavaisuuksia. Tietokannoissa replikointi tehtiin tyypillisesti push-mallilla, kun taas web-sovelluksissa selain saa dataa palvelimelta tyypillisesti pull-mallilla HTTP-pyyntöjä käyttäen. WebSocket-protokolla kuitenkin mahdollistaa päivitysten työntämisen selaimeen, joten tässä kohtaa web-sovelluksissa voisi ottaa mallia tietokannoissa ja siirtyä enemmän push-malliin. Toinen oleellinen eroavaisuus on replikoinnin toteutuskerroksessa. Hajautetut tietokannat hoitavat replikoinnin pisteiden välillä tyypillisesti pitkälti automatisoidusti. SPA-sovelluksissa replikointilogiikan toteuttaminen on taas tyypillisesti sovellusohjelmoijan vastuulla, kun käytetään esimerkiksi HTTP-pyyntöjä. Poikkeuksen kuitenkin tekee selaimessa toimiva PouchDB-tietokanta, jonka erityisominaisuutena automaattinen replikointi palvelimelle sijaitsevaan CouchDB-tietokantaan. Sen suosiota kuitenkin rajannee juuri CouchDB. Vastaava mahdollisuus automaattiseen replikointiin yhdistettynä suositumpaan tietokantaan voisi olla erittäin suosittu ratkaisu SPA-sovelluksiin.
+
+Eheyden hallintaa tutkittiin tarkastelemalla kuinka ACID-ominaisuudet, eristyvyysanomaliat sekä eheysmallit toteutuvat SPA-sovelluksissa. Osa hajauttujen tietokantojen ongelmista vältetään SPA-sovelluksissa luonnostaan selaimen yksisäikeisyyden ja keskitetyn tietokannan ansiosta. Vertailun avulla havaittiin kuitenkin joitain tilanteita, joissa SPA-sovellukia kehittäessä on syytä olla tarkkana. ACID-ominaisuuksista tehtiin seuraavia huomioita. Kun tehdään useita tietueita päivittäviä operaatioita REST-rajapinnan kautta, tulee operaatio tehdä yhdellä HTTP-pyynnöllä, jos halutaan varmistua sen atomisuudesta. Tietokannat käyttävät muun muassa sarakkeiden tietotyyppejä, vieras- ja pääavainrajoitteita sekä arvojoukkorajoitteita turvaamaan tietokannan eheyttä. Näihin liittyviä kirjastoja ei kuitenkaan tunnu löytyvän selaimessa esimerkiksi Redux-kirjaston yhteydessä käytettäväksi. Eheydestä huolehtiminen jää siis sovelluskehittäjän vastuulle. Vaikka selaimessa suoritetaankin ohjelmakoodia yhdessä säikeessä, on SPA-sovelluksissa mahdollisuus esimerkiksi dirty read tai lost update -anomalioiden kaltaisiin virheisiin. 
+
+Lopuksi käsiteltiin vielä multi-master tietokannoissa esiintyviä kirjoitusoperaatioiden konflikteja ja niiden ratkaisemista. Hajautetuissa tietokannoissa käytetään konfliktien ratkaisemiseen esimerkiksi CRDT-tietorakenteita. Nämä ovat mielenkiintoisia myös SPA-sovellusten kannalta sillä niistä on olemassa aktiivisesti kehitetty JavaScript-implementaatio Automerge.
+
+\section{Tulosten validiteettitarkastelu}
+
+Tämän tutkielman tutkimusotetta voidaan kuvailla design science ja tapaustutkimus -tyyppiseksi. Esitetyt vertailut ja analyysit ovat laadullista tutkimusta. Näihin tutkimustapohin liittyvät ongelmat ovat läsnä myös tässä tutkielmassa.
+
+Laadullista tutkimusta värittävät tutkijan kokemukset ja subjektiivinen tunne. Vahvistusharha saa tutkijan suosimaan hypoteesiaan tukevia havaintoja ja tuloksia. Tässä tutkielmassa vahvistusharha on voinut vaikuttaa sekä tiedon keräämiseen että analysointiin. Aineiston keräämisen puutteellisuus ja edustavuuden puute liitetään myös  tapaustutkimus-strategiaan (cite Aaltola). Lähteiden valinnassa ja käsiteltävien asioiden rajaamisessa toinen henkilö tutkimuksen tekijänä olisi luultavasti päätynyt erilaisiin valintoihin. Lisäksi on vaikea sanoa varmuudella esimerkiksi tiettyjen tekniikoiden, kuten eheysrajoitteiden, esiintymättömyydestä SPA-sovellusten kontekstissa. Voi olla, että jokin tekniikka onkin käytössä, mutta esimerkisi käytetyt hakutermit ovat olleet vääriä ja oikeat kirjastot jäävät löytymättä. Luotettavampi katsaus käytettyihin tekniikoihin vaatisi perehtymisen riittävän laajaan otokseen todellisia ohjelmistoja ja niiden tekniikoiden kartoittamiseen. Tämän tutkielman yleistettävyyteen vaikuttavat myös SPA-sovelluksen rakenteesta ja yksinkertaisuudesta sekä käytetyistä teknologioista tehdyt oletukset.
+
+Vertailu ja ominaisuuksien toteutumisen arviointi melko vapaamuotoista eikä esim mittauksiin kvantitaviista tutkimusta tai formaalimpaa todistuksiin perustuvaa päättelyä. Tutkimuksen toistaminen vaatisi kenties samoihin tutkimuskysymyksiin vastaavan pro gradun kirjoittamista toisen henkilön tai useiden muiden henkilöiden toimesta. Tulosten vahvistaminen voisi siis olla näin mahdollista toistamalla tutkimus, mutta se olisi melko työlästä.
+
+Tutkielma kuitenkin vaikuttaisi saavuttavan design science -menetelmää käyttäville tutkimuksille tyypillisen (cite  Van Aken) tavoitteen: tuottaa uuta hyödyllistä tietoa 
+Design science: tavoitteena tuottaa hyödyllistä tietoa, jota alan ammattilaiset voivat käyttää kehittäessään uusia ratkaisuja alansa ongelmiin.
+
+\section{Johtopäätöksiä ja aiheita jatkotutkimukselle}
+
+Selkeä eroavaisuus SPA-sovellusten ja replikoitujen tietokantojen välillä oli replikoinnin automaattisuudessa. PouchDB on näyttänyt, että automaattisen replikoinnin toteuttaminen on mahdollista myös selaimen ja palvelimen välillä. Tietyt PouchDB:n ominaisuudet ovat kenties hidastaneet sen suosion kasvua, joten olisi mielenkiintoista lähteä toteuttamaan sama idea esimerkiksi PostgreSQL tietokantaa käyttäen. PouchDB:n replikointi hyödyntää suoraan CouchDB:n replikointirajapintaa. Samoin voisi kenties tehdä PostgreSQL:n kohdalla ja hyödyntää sen loogisen replikoinnin rajapintaa.
+
+Loogisten lokien käytöstä voisi olla hyötyä myös selaimessa tehtävään persistointiin. Kokonaisen tilaobjektin persistoinnin sijaan selaimessa voitaisi persistoida relaatiotietokantojen käyttämien transaktiolokien tapaan tiiviitä lokeja tapahtuneista operaatiosta. Näistä lokeista voitaisiin kenties tilannevedoksiin yhdistettynä palauttaa sovelluksen tila esimerkiksi vahingossa tapahtuneen selainikkunan sulkemisen jälkeen. Tällaiset lokit ovat nopeita kirjoittaa levylle verrattuna suureen JSON-muotoisen tilaobjektiin, joka joudutaan serialisoimaan merkkijonoksi ennen tallentamista. Parhaimmillaan samaa lokiformaattia olisi mahdollista käyttää selaimessa tehtävässä persistoinnissa, replikoinnissa sekä palvelimen tietokantaoperaatioissa.
+
+ACID-ominaisuuksia tarkastellessa syntyi havainto, että selaimessa olevan datan ACID-aknonyymien mukaiseen eheyteen liittyen löytyy todella vähän materiaalia tai kirjastoja. Paikallisen tietokannan eheys esimerkiksi uniikkiusrajoitteiden avulla on kenties jäänyt vähemmälle huomiolle, kun palvelimen tietokanta hoitaa sen lopulta.  Tietokantojen käyttämien eheysrajoitteiden (engl. integrity constraint) kaltaisista tekniikoista voi olla hyötyä, jos lähdetään muuttamaan palvelimen ja selaimen välistä painopistettä PWA tai local-first -paradigmojen suuntaan ja sallitaan enemmän offline-tilassa tehtäviä päivityksiä.
+
+HTTP ja REST-rajapinnat ovat muodostuneet oletusarvoiseksi tavaksi siirtää dataa selaimen ja sovelluspalvelimen välillä. Niissä data kuitenkin liikkuu pull-mallilla palvelimelta selaimeen - päinvastoin kuin replikoiduissa tietokannoissa missä data liikkuu tyypillisesti push-mallia käyttäen. WebSocket-protokolla mahdollistaa datan työntämisen palvelimelta selaimeen, mutta WebSocket-protokollan pariksi ei vaikutata muodostuneen samanlaista REST-rajapintojen kaltaista oletusarvoista mallia. Mielenkiintoinen tutkimusaihe olisi selvittää onko WebSocket-protokollaa käyttävillä sovelluksilla käytössöä jotain REST-rajapintojen kaltaisia malleja vai käytetäänkö niissä sovellusspesifejä ratkaisuja. Yleisten mallien puuttuessa sellaisen kehittäminen voisi olla erittäin hyödyllistä.
+
+Uusien selaimessa käytettävien tekniikoiden ja mallien kehittämiseen kannustaa tutkielman alussa tehty huomio web-tekniikoiden kehittymisestä. Tekniikat, kuten Ajax ja SPA nousivat pinnalle vasta vuosina sen jälkeen, kun ne mahdollistavat tekniikat olivat käytet\-tävissä selaimissa. Tämän perusteella voisi ennustaa, että suhteellisiin uusiin standardeihin, kuten IndexedDB ja WebSocket, liittyen tullaan näkemään uusia menetelmiä ja suureen suosioon kasvavia kirjastoja.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\cleardoublepage                          %fixes the position of bibliography in bookmarks
+\phantomsection
+\addcontentsline{toc}{chapter}{\bibname}  % This lines adds the bibliography to the ToC
+\printbibliography
+\backmatter
+
+Mahdollisia liitteitä
+
+Koodinäyte x.x: ES6-tyylillä toteutettu reducer-funktion
+
+\begin{verbatim}
+const reducer = (state = [], action) => {
+  switch (action.type) {
+    case 'NEW_COMMENT':
+      return {
+        ...state,
+        items: items.map(item => {
+          item.id !== action.data.item
+            ? return item
+            : return {
+                ...item,
+                comments: [...item.comments, action.data]
+              }
+        })
+      }
+    
+    default:
+      return state
+  }
+}
+\end{verbatim}
+
+Muistiinpanoja:
+
+Paikallinen tila on epäehessä tilassa jos sitä päivitetään vain osittain. Esim tehdään päivitys yhteen riviin. Saadaan takaisin päivitetty rivi. Entä jos ko riviä oli päivitetty palvelimella? Esim annettu 5 pros korotus jokaisen riviin. Nyt paikallisessa tilassa epäeheä taulu. Eli ei pitäisi sallia osittaisia päivityksiä palvelimelta?
+
+Tämä siis johtuu siitä että järjestelmä ei suorita päivityksiä samassa järjestyksessä jokaisessa pisteessä. Ja tätä käsitellään datakeskeisissä eheysmalleissa. Toteutus esim juoksevat transaktionumerot (lamportin kellot?) joita tarkkailemalla voi tunnistaa että rivi on päivittynyt -> täytyy päivittää dataa. GET all rows where lamportkello yli 123455. tjsp? Tämä olisi datan propagointia mutta voitaisiin myös propagoida operaatioita, mutta sql operaatiot eivät ole muutettavissa redux operaatioiksi.
+
+Selainta päivittämällä saa tuoreet datat. Paitsi jos selain persistoi dataa -> tarvitaan jokin sovelluksen oma mekanismi "update all data" mikä taas vaikuttaa käytettävyys-antipatternilta.
+
+TODO: Lisäksi SPA-sovelluksilla ja Erikoisuutena mahdollisuus valita synkronisuuden ja asynkronisuuden väliltä operaatiokohtaisesti toisin kuin esimerkiksi PostgreSQL WAL-lokeihin perustuvassa replikoinnissa. NOTE: tää kuuluis protokolliin?
+
+--
+
+Karsittuja:
+
+NOTE: Yllä olevat ovat datakeskeisiä malleja. Lisäksi on olemassa asiakaskeskeisiä malleja, kuten read-your-writes ja monotonic read. Nämä eivät kuitenkaan juuri koske SPA-sovelluksia, sillä niissä anomaliat liittyvät asiakkaan käyttämän replikan vaihtumiseen ja tällöin esimerkiksi aiempaa vanhemman tiedon lukemiseen. SPA-sovelluksissa asiakas lukee dataa omasta paikallisesta kopiostaan, joten replikan vaihtumisesta aiheutuvia anomalioita ei pääse tapahtumaan.
+
+TODO: Viiveen mittaaminen. Asynkroniseen replikointiin liittyy jonkinlainen viive päivitysten viemisessä vastaanottaviin tietokantapisteisiin. Tätä viivettä voidaan mitata monella eri mittarilla. Hajautetuissa järjestelmissä käytettyjä tapoja ovat ainakin aika, järjestetys ja numeerinen vaihtelu.
+
+\end{document}
